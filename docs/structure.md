@@ -43,7 +43,7 @@
 
 ```
 game0506/
-├── CLAUDE.md                  # 專案規範(技術選擇、命名、工作流)
+├── Rule.md                    # 專案規範(技術選擇、命名、工作流)
 ├── docs/                      # 產品需求文件(實作前必讀 docs/PRD.md)
 │   ├── structure.md           # ← 本檔
 │   ├── setup.md               # 後端部署 + 操作 + FAQ(不含 Sheet 欄位字典)
