@@ -49,9 +49,7 @@ game0506/
 │   ├── setup.md               # 後端部署 + 操作 + FAQ(不含 Sheet 欄位字典)
 │   ├── sheet.md               # Sheet 表格設定字典(v5,10 張 seed 表欄位)
 │   ├── mechanic_v5_plan.md    # v5 機制設計與結算公式(當前)
-│   ├── v5_data_ready.md       # 可直接填入 Sheets 的完整資料集
-│   ├── PRD.md / mechanic_v4.md / ...
-│   └── code-review-2026-05-19.md  # bug 評估與修正計畫
+│   └── v5_data_ready.md       # 可直接填入 Sheets 的完整資料集
 ├── reference/                 # 設計參考,唯讀,不可修改
 ├── render.yaml                # Render Blueprint 部署設定(也可移植到其他平台)
 │
