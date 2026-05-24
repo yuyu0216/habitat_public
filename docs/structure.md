@@ -93,17 +93,24 @@ game0506/
 │   │   │   ├── llm.js         # OpenRouter 呼叫(Claude cache_control + streaming)
 │   │   │   ├── prompt-builder.js # persona + 規則 + state + scouts + history
 │   │   │   ├── triggers.js    # 預寫腳本選句(round_start/action_explore_auto/scout_result/...)
-│   │   │   └── scout-to-dialogue.js # scout 結果包成 system_trigger 訊息(整合在 settlement 內)
+│   │   │   ├── scout-to-dialogue.js # scout 結果包成 system_trigger 訊息(整合在 settlement 內)
+│   │   │   ├── seed.js        # 2026-05-24:runSeed({force})—Sheets→Postgres(CLI 與 POST /seed 共用)
+│   │   │   ├── export-data.js # 2026-05-24:EXPORT_SPECS/buildAllCsvs—7 張研究 CSV(+reflection_messages)
+│   │   │   ├── reflection-banks.js # 2026-05-24 第7點:反思兩題庫(R1–4 前3 / R5 全6)getReflectionBank(round)
+│   │   │   └── game-config.js # 2026-05-24 第4點:AP_BASE + exploreLimitForRound + getChatRewards 載入
 │   │   ├── db/
 │   │   │   ├── schema.sql     # Postgres 完整 schema(seed 表 + 執行期表 + 對話表)
 │   │   │   ├── pool.js        # pg.Pool 實例 + healthCheck
 │   │   │   └── queries.js     # 所有 SQL 集中(具名 async 函式)
 │   │   ├── middleware/
-│   │   │   └── auth.js        # session cookie 驗證,把 student 掛到 req
+│   │   │   └── auth.js        # session cookie 驗證 + 防重複登入(比對 students.active_sid、刷新 last_seen 心跳),把 student 掛到 req
 │   │   └── data/              # 預寫對話腳本(git 版控)
 │   │       ├── species-personas.json   # MVP 2 物種人格(green / yellow)+ generic
-│   │       ├── dialogue-triggers.json  # 6 種觸發類型
-│   │       └── scout-ai-variants.json  # (可選)scout AI 口吻變體
+│   │       ├── dialogue-triggers.json  # 6 種觸發類型(action_explore_auto 派遣口白由老師自改)
+│   │       ├── scout-ai-variants.json  # (可選)scout AI 口吻變體
+│   │       ├── reflection-prompts.json # 2026-05-24:兩題庫 bank_rounds_1_4 / bank_round_5
+│   │       ├── explore-config.json     # 2026-05-24 第4點:每回合探索次數上限(R1=3…R5=5)
+│   │       └── chat-rewards.json       # 2026-05-24 第4點:對話獎勵(只給 AP)設定
 │   └── scripts/
 │       ├── seed-from-sheets.js  # npm run seed:Sheets → Postgres(冪等,有 --force)
 │       └── export-csv.js        # npm run export:研究結束匯出 6 張表 CSV
@@ -297,7 +304,8 @@ config → session → data → icons → state → api
 | `.hd-execute`          | queue-panel.js                                 | 「展開行動」CTA                       |
 | `.hd-chat`             | chat.js                                        | AI 對話容器(`data-mode` 區分)        |
 | `.hd-chat__msg--ai/user` | chat.js                                      | 訊息氣泡                              |
-| `.hd-chat__typing`     | chat.js                                        | AI 思考中三點動畫                     |
+| `.hd-chat__typing`     | chat.js                                        | (舊)AI 思考中三點動畫;2026-05-23 改用 `.hd-chat__status` 灰色輪播 |
+| `.hd-chat__status`     | chat.js                                        | 等 AI 期間「活著」狀態(灰色,文字 JS 輪播閒晃/探險中…);AI 改純 polling 單一來源 |
 | `.hd-report`           | survival-report.js                             | 報告畫面(`--reflection` 切反思模式)  |
 | `.hd-report-changes`   | survival-report.js                             | 左半:族群變化清單                     |
 | `.hd-change`           | survival-report.js                             | 單筆變化(`--success/--inflow/--negative`)|
@@ -375,15 +383,18 @@ config → session → data → icons → state → api
 | `GET  /api/game/habitats`        | 同上                                                              | —                 | —                               |
 | `GET  /api/game/round-status`    | 同上                                                              | —                 | —                               |
 | `POST /api/game/actions`         | 同上(同時寫 `auto_send` 對話訊息)                                | session           | actions / conversations         |
+| `POST /api/game/explore`         | 同上(2026-05-24 第4點:即時探索)                                  | session           | player_state(explore_count)/ player_scouts / conversations(auto_send+system_trigger) |
 | `GET  /api/game/report`          | 同上                                                              | session           | —                               |
 | `POST /api/chat`                 | [routes/chat.js](../server/src/routes/chat.js)(SSE)              | session           | conversations(user + assistant)|
 | `GET  /api/events/pending`       | [routes/events.js](../server/src/routes/events.js)                | session           | —                               |
 | `POST /api/team/chat` / `GET /api/team/messages` | [routes/team.js](../server/src/routes/team.js)（2026-05-22) | session | team_messages |
-| `POST /api/reflection/answer` / `GET /api/reflection/messages` | [routes/reflection.js](../server/src/routes/reflection.js)（2026-05-22) | session | reflection_messages |
+| `POST /api/reflection/answer`(帶 question)/ `GET /api/reflection/messages` / `GET /api/reflection/state` | [routes/reflection.js](../server/src/routes/reflection.js)（2026-05-22;2026-05-24 第7點逐題作答+兩題庫,answer 存 question+回答,state 回題庫+已答) | session | reflection_messages |
 | `GET  /api/teacher/player-detail`| 同上(2026-05-23)                                                | X-Teacher-Token   | —(讀:各棲地隻數/糧食/性狀/本回合行動,老師抽屜用) |
-| `GET  /api/teacher/settlement-detail` | 同上(2026-05-23)                                            | X-Teacher-Token   | —(讀:某回合全班 reports + trace 計算明細) |
+| `GET  /api/teacher/settlement-detail` | 同上(2026-05-23)                                            | X-Teacher-Token   | —(讀:某回合全班 reports + trace 計算明細;trace 含 habitat_change 全班摘要) |
+| `POST /api/teacher/seed`         | 同上(2026-05-24「刷新參數」)                                  | X-Teacher-Token   | seed 表(Sheets→Postgres;呼叫 services/seed.js;live data 未 force → 409) |
+| `GET  /api/teacher/export`       | 同上(2026-05-24 匯出 ZIP)                                     | X-Teacher-Token   | —(讀:6 張研究表 → ZIP 下載;呼叫 services/export-data.js + archiver) |
 | `POST /api/teacher/start-game`   | [routes/teacher.js](../server/src/routes/teacher.js)              | X-Teacher-Token   | round_status / player_state / conversations(round_start) |
-| `POST /api/teacher/settle-round` | 同上                                                              | X-Teacher-Token   | reports / player_state / player_scouts / player_traits / conversations(system_trigger) |
+| `POST /api/teacher/settle-round` | 同上                                                              | X-Teacher-Token   | reports / player_state / player_traits / conversations(system_trigger);2026-05-24:探索改即時後,reports.scouts 由「本回合 player_scouts 重建」(getPlayerScoutsForRound),settlement 不再重寫 player_scouts、不重發 scout 結果對話 |
 | `POST /api/teacher/next-round`   | 同上                                                              | X-Teacher-Token   | round_status / conversations(round_start) |
 | `POST /api/teacher/reset-game`   | 同上                                                              | X-Teacher-Token   | (清空執行期表)                  |
 | `GET  /health`                   | [index.js](../server/src/index.js)                                | —                 | —                               |
@@ -396,24 +407,24 @@ config → session → data → icons → state → api
 | `species_starts`    | Sheets seed         | 物種起始棲地與初始隻數                              |
 | `species_traits`    | Sheets seed         | 物種特性(cost / amount / initial_trait;v5 加 food_amount / food_consume / tags) |
 | `traits`            | Sheets seed         | 性狀資料庫(v5 擴成 10 欄條件式效果)                |
-| `scout_pool`        | Sheets seed         | v4 偵查卡池(含 4 個篩選欄)                         |
-| `events_pool`       | Sheets seed         | 事件池(trigger / target_habitat / target_species;v5 加 polution)|
+| `scout_pool`        | Sheets seed         | v4 偵查卡池(含 4 個篩選欄);2026-05-24 第6點加 `metric`/`metric_value`/`metric_op`(雙向棲地數值條件,宏觀報告優先抽)|
+| `events_pool`       | Sheets seed         | 事件池(trigger / target_habitat / target_species;v5 加 polution;2026-05-24 第1點加 `impact_desc` 整體影響說明,支援 {color} token)|
 | `habitat`           | Sheets seed(v5)    | 棲地初始 水源/植被/污染/承載量                      |
 | `species_action_rate`| Sheets seed(v5)   | 同棲地物種互動 → 行動倍率                            |
 | `habitat_change`    | Sheets seed(v5)    | 物種數量 → 棲地數值變化                              |
 | `habitat_affect`    | Sheets seed(v5)    | 棲地數值閾值 → 標籤物種增減                          |
 | `round_status`      | Node 寫入            | 全域回合狀態(round / phase / updated_at)         |
 | `habitat_state`     | Node 寫入(v5)      | 每回合各棲地的 水源/植被/污染(類比 player_state)   |
-| `player_state`      | Node 寫入            | 每回合每位玩家的人口/食物/飢餓狀態(JSONB)          |
+| `player_state`      | Node 寫入            | 每回合每位玩家的人口/食物/飢餓狀態(JSONB);2026-05-24 第4點加 `bonus_ap`(對話獎勵加成,apTotal=10+bonus_ap)、`explore_count`(本回合已探索次數) |
 | `actions`           | Node 寫入            | 學生送出的行動                                      |
 | `action_submissions`| Node 寫入            | 防重複送出(UNIQUE(player_code, round))            |
 | `player_traits`     | Node 寫入            | 玩家累計解鎖性狀                                    |
 | `player_scouts`     | Node 寫入            | 玩家累計取得的偵查情報                              |
-| `reports`           | Node 寫入            | 每回合每位玩家的結算報告(2026-05-23 加 `trace` JSONB:結算每步中間值,老師端除錯用;學生 getReport 不取此欄) |
+| `reports`           | Node 寫入            | 每回合每位玩家的結算報告(2026-05-23 加 `trace` JSONB:結算每步中間值,老師端除錯用。`events` 欄含全班環境事件:A/B 類事件對每位玩家可見,未被命中者 delta=0)。2026-05-24:`trace` 加 `habitat_change`(全班共用,棲地數值變化摘要,老師端用);`changes` 的 event 型加 `event_id`(學生報告事件卡對應損失用)。**學生 getReport 改有取 `trace`,但 `/report` 只從 trace 萃取精簡 `habitat_counts:{棲地:{before,after}}` 回給學生,不回整個 trace** |
 | `conversations`     | Node 寫入            | AI 對話(含 initiator / turn_index / cached_tokens / model_id) |
 | `conversation_summaries` | (預留 Stage 10) | 跨回合對話壓縮                                      |
 | `team_messages`     | Node 寫入(2026-05-22)| 隊伍聊天(同物種頻道;species/player_code/name/round/message) |
-| `reflection_messages` | Node 寫入(2026-05-22)| 反思機器人聊天(role=bot/user;結算推題 + 學生作答) |
+| `reflection_messages` | Node 寫入(2026-05-22)| 反思作答;2026-05-24 第7點改「逐題作答」:加 `question` 欄,每筆 role=user 一列存 question+回答(研究配對);bot 推題退場(題目改前端從題庫顯示) |
 | `"session"`         | connect-pg-simple   | 登入 session(cookie 對應)                          |
 
 **seed_status view**:`SELECT * FROM seed_status` 一行確認各表筆數,健康檢查與 seed 後驗證用。
@@ -446,7 +457,7 @@ npm run export                     # 匯到 server/exports/<timestamp>/
 npm run export -- /custom/path     # 自訂路徑
 ```
 
-匯出 6 張 CSV(UTF-8 BOM + RFC 4180 跳脫):`conversations.csv`(研究核心)、`reports.csv`、`player_state.csv`、`player_scouts.csv`、`player_traits.csv`、`students.csv`。詳見 [scripts/export-csv.js](../server/scripts/export-csv.js)。
+匯出 7 張 CSV(UTF-8 BOM + RFC 4180 跳脫):`conversations.csv`(研究核心)、`reports.csv`、`player_state.csv`、`player_scouts.csv`、`player_traits.csv`、`reflection_messages.csv`(2026-05-24:反思 question↔回答配對)、`students.csv`。詳見 [scripts/export-csv.js](../server/scripts/export-csv.js)。
 
 ---
 

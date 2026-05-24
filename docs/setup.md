@@ -61,7 +61,16 @@
 
 - **自架**:重啟 server(若用 `npm run dev` 會自動重啟)
 - **Render / Zeabur**:`git push origin main` → 平台自動部署
-- **schema.sql 改了**:對開發 DB 跑 `psql -f src/db/schema.sql`(`IF NOT EXISTS` 不會覆蓋舊表;v5 遷移段用 `ADD COLUMN IF NOT EXISTS`,重跑安全);若要清空重來請手動 DROP
+- **新增了 npm 套件時**:務必重跑 `npm install`(2026-05-24 起依賴 `archiver` 做匯出 ZIP;雲端平台部署會自動 install,自架要手動跑)
+- **schema.sql 改了**:對開發 DB 跑 `psql -f src/db/schema.sql`(`IF NOT EXISTS` 不會覆蓋舊表;檔尾遷移段用 `ADD COLUMN IF NOT EXISTS`,重跑安全);若要清空重來請手動 DROP
+
+#### 1.3a 新增 Sheet 欄位 / 更新既有 DB(2026-05-24 起)
+本系統**沒有自動 migration**。新增欄位(如 2026-05-24 的 `impact_desc` / `metric*` / `question` / `bonus_ap` / `explore_count`)要走完整四步:
+1. **clean install(實驗常態)**:整個 DB 重建時,直接 `psql -f src/db/schema.sql` 會一次帶出所有欄(CREATE 段已含新欄),再 `npm run seed -- --force` 即可。
+2. **更新既有 DB(不想重建)**:**重跑** `psql $DATABASE_URL -f src/db/schema.sql` 即可——檔尾的 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` 會把缺的欄補進現有表(不動既有資料)。Render/Zeabur 可在 DB console 貼這段 ALTER,或本機對 `DATABASE_URL` 跑。
+3. **Sheet 端**:在 Google Sheet 工具列跑「🛠 棲地設定 → 補欄(安全)」把新欄補進對應分頁(不洗資料),填內容。
+4. **同步**:`npm run seed -- --force`(或老師頁「🔧 刷新參數」二次確認)把 Sheet 新欄灌進 Postgres。
+> 順序重點:**先 ALTER(步驟 2)再 seed**——表上沒有該欄時 seed 的明確欄位 INSERT 會直接報錯。
 
 ### 1.4 可用的 npm scripts
 
@@ -69,10 +78,12 @@
 |---|---|---|
 | `npm start` | 正式啟動 server | 部署後 |
 | `npm run dev` | 開發模式(Node 20+ 內建 --watch) | 開發時 |
-| `npm run seed` | Sheets → Postgres 同步(冪等,偵測 live data 會拒絕) | 開局前 / 改了 Sheets 後 |
-| `npm run seed -- --force` | 強制覆寫(會清掉執行期 player_state / conversations / habitat_state 等) | 重置實驗時 |
-| `npm run export` | 匯出 6 張 CSV 到 `server/exports/<timestamp>/` | 課後做研究 |
+| `npm run seed` | Sheets → Postgres 同步(冪等,偵測 live data 會拒絕)。**亦可改用老師頁「🔧 刷新參數」按鈕** | 開局前 / 改了 Sheets 後 |
+| `npm run seed -- --force` | 強制覆寫(會清掉執行期 player_state / conversations / habitat_state 等)。**老師頁刷新參數遇 live data 二次確認 = 此效果** | 重置實驗時 |
+| `npm run export` | 匯出 6 張 CSV 到 `server/exports/<timestamp>/`。**亦可改用老師頁「⬇ 匯出研究資料」按鈕(回 ZIP 下載)** | 課後做研究 |
 | `npm run export -- /custom/path` | 自訂匯出目錄 | 同上 |
+
+> CLI 與老師頁按鈕共用同一份邏輯([server/src/services/seed.js](../server/src/services/seed.js) `runSeed`、[server/src/services/export-data.js](../server/src/services/export-data.js) `buildAllCsvs`),兩條路結果一致。
 
 ### 1.5 老師端控制方式
 
@@ -80,14 +91,22 @@
 
 | 動作 | admin 頁(teacher.html) | 直接打 API(curl / Postman) |
 |---|---|---|
+| 刷新參數(Sheets→Postgres seed) | 「🔧 刷新參數(Sheet→DB)」按鈕(2026-05-24) | `POST /api/teacher/seed`(body `{force}`) |
 | 開場初始化 | 「⚠ 開場 startGame」按鈕 | `POST /api/teacher/start-game` |
 | 重啟一場 | 「🔄 重啟本場」按鈕 | `POST /api/teacher/reset-game` |
 | 看進度 | 進度頁面格子 | `GET /api/teacher/progress` |
 | 結算 | 「結算本回合」按鈕 | `POST /api/teacher/settle-round` |
 | 下一回合 | 「下一回合」按鈕 | `POST /api/teacher/next-round` |
+| 匯出研究資料(6 張 CSV 打包 ZIP) | 「⬇ 匯出研究資料(CSV)」按鈕(2026-05-24,常駐隨時可匯) | `GET /api/teacher/export` |
 | dev 強切 phase | (沒按鈕) | `POST /api/teacher/dev/set-phase`(dev 環境用) |
 
 **所有老師端 API 都要帶 `X-Teacher-Token: <TEACHER_PASSWORD>` header**。
+
+> **2026-05-24 新增**:seed 與 export 現在老師頁有按鈕,不必進 terminal——
+> - 「🔧 刷新參數」= 網頁版 `npm run seed`(偵測到 live data 會跳二次確認,確認後等同 `--force`)。
+> - 「⬇ 匯出研究資料」= 網頁版 `npm run export`,但直接回傳 ZIP 下載(不寫伺服器磁碟)。
+> - 老師頁還新增**回合倒數**顯示(action 階段;與學生端同基準 `ROUND_DURATION_SEC`)。
+> - 結算明細抽屜新增 **habitat_change**(物種數量→棲地數值)摘要,可驗證該條有跑、數字怎麼來。
 
 ---
 
@@ -167,11 +186,12 @@ idle(初始)→ startGame → action(學生排行動)
 
 ### Q1: 改了 Sheets 之後,Postgres 不會自動更新嗎?
 
-A: 不會。Sheets 是「設計階段」的編輯介面,**必須跑 `npm run seed`** 才會同步到 Postgres。
-- 若實驗還沒開始(player_state / conversations 都還沒資料),直接跑 `npm run seed`
+A: 不會。Sheets 是「設計階段」的編輯介面,**必須跑 seed** 才會同步到 Postgres。
+做法二擇一(2026-05-24 起):**老師頁「🔧 刷新參數」按鈕**(免進 terminal)或 CLI `npm run seed`。
+- 若實驗還沒開始(player_state / conversations 都還沒資料),直接按「刷新參數」/ 跑 `npm run seed`
 - 若實驗已經有資料,seed 會拒絕(避免覆寫),這時要評估:
   - 不想動實驗資料 → 不要改 Sheets(或改了也不 seed,改動不生效)
-  - 真的要重來 → `npm run seed -- --force`(會清掉 player_state / conversations / habitat_state 等執行期表)
+  - 真的要重來 → 老師頁刷新參數的**二次確認**(等同 `--force`)或 CLI `npm run seed -- --force`(會清掉 player_state / conversations / habitat_state 等執行期表)
 
 ### Q2: 改了 events_pool 結算沒套用
 
@@ -204,9 +224,10 @@ A: 物種清單 hardcode 在前端([src/js/data.js](../src/js/data.js) 的 `HD_S
 
 ### Q7: 我想看每回合每位玩家的詳細變化
 
-A: 跑 `npm run export`,匯出的 `reports.csv` 與 `player_state.csv` 就是完整紀錄。
+A: 老師頁按「⬇ 匯出研究資料(CSV)」(隨時可匯)或 CLI 跑 `npm run export`,匯出的 `reports.csv` 與 `player_state.csv` 就是完整紀錄。
 - `reports.csv` 的 `changes` / `events` / `scouts` / `new_traits` 都是 JSON 字串
 - 用 Excel / Google Sheets 開 CSV(有 BOM 不會亂碼),也可用 Python pandas 解析 JSON 欄
+- 想看單一回合「逐棲地 / 逐步計算」的中間值:老師頁進度格點學生 → 結算明細抽屜(含 habitat_change)
 
 ### Q8: 結算很慢(超過 5 秒)
 
@@ -242,7 +263,7 @@ A: `ENABLE_RESPONSE_CACHE=true` 會讓 OpenRouter 把「相同輸入回相同輸
 - 後端原始碼:[server/src/](../server/src/)(Express routes + services + db)
 - 後端腳本:[server/scripts/](../server/scripts/)(seed / export)
 - 前端原始碼:[src/index.html](../src/index.html) / [src/teacher.html](../src/teacher.html) / [src/js/](../src/js/) / [src/styles/](../src/styles/)
-- 舊 GAS 程式(已退役):`gas/Code.gs` / `gas/sheet_setup.gs` / `gas/phase_b.gs`(保留供考古,不再部署)
+- GAS 程式:`gas/sheet_setup.gs` **仍在用**(Google Sheet 選單「⚠ 全部重建」= `rebuildAllSheets`,重建設定表為 DATA_V3 預設、students 名單保留);`gas/Code.gs` / `gas/phase_b.gs` 為退役 runtime(保留供考古,不再部署)。三個檔皆保留,清空+重建 Sheet 走 `rebuildAllSheets`,不需刪 .gs
 </content>
 </invoke>
 </invoke>
