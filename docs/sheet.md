@@ -1,10 +1,10 @@
 # Google Sheets 表格設定字典(v5)
 
 > **這份文件只講一件事:老師要在 Google Sheets 把每張表的「每一欄」填成什麼。**
-> 部署、啟動、結算引擎、FAQ 請看 [docs/setup.md](setup.md);機制設計脈絡看 [docs/mechanic_v5_plan.md](mechanic_v5_plan.md)。
+> 部署、啟動、結算引擎、FAQ 請看 [docs/setup.md](setup.md);整體架構見 [docs/structure.md](structure.md)。
 >
 > 對應的程式真相來源:[server/src/db/schema.sql](../server/src/db/schema.sql)(欄位定義)、
-> [server/scripts/seed-from-sheets.js](../server/scripts/seed-from-sheets.js)(讀法與容錯)。
+> [server/src/services/seed.js](../server/src/services/seed.js)(讀法、翻譯層與容錯)。
 > 本文件若與這兩支程式衝突,以程式為準,並請順手修正本檔。
 
 ---
@@ -33,7 +33,7 @@
 
 ### 1.1 id 對照(老師可填中文,seed 會翻成 id)
 
-seed mapper 內建翻譯層([seed-from-sheets.js:128-158](../server/scripts/seed-from-sheets.js#L128-L158)),**填中文或 id 都可以**,引擎一律用 id。
+seed mapper 內建翻譯層([seed.js:96-129](../server/src/services/seed.js#L96-L129)),**填中文或 id 都可以**,引擎一律用 id。
 
 | 類別 | 中文 → id |
 |---|---|
@@ -114,7 +114,7 @@ seed mapper 內建翻譯層([seed-from-sheets.js:128-158](../server/scripts/seed
 | 9 | `events_pool` | 事件 | 人類事件(固定回合 / 物種棲地閾值) | ✅ 重點 |
 | 10 | `scout_pool` | 事件 | 探索卡牌(情報 + 解鎖性狀) | ✅ 可調 |
 
-> **新分頁容錯**:6–8 這 3 張 v5 新表若 Sheets 還沒建,seed 會當作空表略過([seed-from-sheets.js:70-77](../server/scripts/seed-from-sheets.js#L70-L77)),不會整批失敗。但少了它們,棲地數值就不會變動。
+> **新分頁容錯**:6–8 這 3 張 v5 新表若 Sheets 還沒建,seed 會當作空表略過([seed.js:42-50](../server/src/services/seed.js#L42-L50) `readSheetOptional`),不會整批失敗。但少了它們,棲地數值就不會變動。
 > **退役**:`species_prompts` 分頁已不 seed(物種人格改放 [server/src/data/species-personas.json](../server/src/data/species-personas.json));`game_state` 已棄用。
 
 ---
@@ -216,14 +216,13 @@ v4 的 traits 只是顯示;**v5 的 traits 會在行動階段與結算實際改�
 
 **讀法範例**:`wetland / water / 0.3 / forage / food / +2` = 「在農田、水源 > 0.3 時、覓食食物 +2」。
 
-**範例(v5 建議,選有效果的 21 個)**:
+**範例(v5 建議,節錄有條件式效果的幾筆;完整 21 條請以 [gas/sheet_setup.gs](../gas/sheet_setup.gs) `V5_DEFAULTS.traits` 為準)**:
 
 | trait_id | name | species | cond_habitat | cond_field | cond_threshold | action | variable | adjust |
 |---|---|---|---|---|---|---|---|---|
-| red-pioneer | 拓荒先鋒 | red | | food | -0.2 | forage | AP | -1 |
+| red-pioneer | 拓荒先鋒 | red | | vegetation | -0.2 | forage | AP | -1 |
 | red-hitchhike | 搭便車 | red | pond | | | breed | AM | 20 |
 | red-network | 族群網絡 | red | | | | migrate | AP | -1 |
-| red-egg-attack | 卵攻擊 | red | | | | breed | AM | 0 |
 | green-breed | 驚人繁殖 | green | | | | breed | AM | 10 |
 | green-amphibious | 水陸兩棲 | green | | | | migrate | AP | -2 |
 | green-crop | 啃食農作 | green | | | | forage | food | 1.5 |
@@ -237,7 +236,9 @@ v4 的 traits 只是顯示;**v5 的 traits 會在行動階段與結算實際改�
 | purple-protect | 育幼保護 | purple | | | | breed | AM | 10 |
 | purple-water-bound | 水域限制 | purple | | water | -0.3 | breed | AM | -999 |
 
-> `cond_field` 填 `food` 不是合法棲地數值(合法只有 water/vegetation/pollution),上表 `red-pioneer` 取自草稿、實際請改成有效 metric 或留空。詳見 §5 注意事項。
+> **`red-egg-attack`(卵攻擊)別寫進 traits**:設計原意是「壓制赤蛙/鬥魚的繁殖」,但這是「物種對物種」的互動關係,屬於 §3.5 `species_action_rate` 的職責,不是性狀條件修正。若寫成 `species=red / variable=AM / adjust=0` 是錯的(掛在自己身上且無效果)。卵攻擊請改用 `species_action_rate`:`affected_species=yellow / cond_species_1=red / action=breed / degree=-50` 之類。
+>
+> `cond_field` 合法值只有 `water` / `vegetation` / `pollution`,**不可填 `food`**(草稿曾出現,踩到會靜默失效)。詳見 §5 注意事項。
 
 ---
 
@@ -255,7 +256,7 @@ v4 的 traits 只是顯示;**v5 的 traits 會在行動階段與結算實際改�
 
 **規則**:`affected_species` 與條件物種**同棲地**時,該行動 ×(1 + degree/100)。多筆命中 → **相乘**(-50% 與 -30% → ×0.5×0.7=×0.35)。
 
-**範例(節錄,完整見 [v5_data_ready.md §5](v5_data_ready.md))**:
+**範例(節錄,完整以 [gas/sheet_setup.gs](../gas/sheet_setup.gs) `V5_DEFAULTS.species_action_rate` 為準)**:
 
 | affected_species | cond_species_1 | cond_species_2 | action | degree |
 |---|---|---|---|---|
@@ -344,11 +345,13 @@ v4 的 traits 只是顯示;**v5 的 traits 會在行動階段與結算實際改�
 | name | 文字 | ✅ | — | 中文名 |
 | trigger | 文字 | ✅ | 見下 | 觸發條件 |
 | target_habitat | 文字 | ✅ | 棲地 id / `<any>` | 影響哪個棲地 |
-| target_species | 文字 | ⬜ | 篩選語法(§1.2)**可用標籤** | 影響哪些物種;支援標籤 `aqua`/`land`/`bird`/`all`(僅事件表);留空 = `<any>` |
+| target_species | 文字 | ⬜ | 篩選語法(§1.2)**可用標籤** | 影響哪些物種;支援標籤 `aqua`/`land`/`bird`/`all`(僅事件表);留空 = `<any>`。**`species_in_habitat_above` 事件請填「單一物種」**(見下) |
 | effect_type | 文字 | ✅ | reduce_pct / reduce_food | 效果類型 |
 | effect_value | 數字 | ✅ | 整數 | reduce_pct=百分比、reduce_food=絕對食物 |
+| **threshold_count** | 數字 | ⬜* | 正整數 | **2026-05-28 新**:`species_in_habitat_above` 事件的數量門檻 N(該物種某棲地數 ≥ N 觸發)。*此類事件必填;其他 trigger 留空。留空時 fallback 解析舊的 `trigger:N` |
 | **polution** | 數字 | ⬜ | 0–1 小數(可負) | **v5 新**:對 target_habitat 的污染增加;0/空=不改。**注意拼字是 `polution`(程式欄名如此)** |
 | message | 文字 | ✅ | — | 顯示在生存報告事件區 |
+| **impact_desc** | 文字 | ⬜ | — | **2026-05-24 新**:老師手寫的整體影響說明,顯示於生存報告事件卡;支援 `{color}` 物種色 token(例:`{yellow} 的赤蛙逃離了`);留空 = 前端用舊邏輯自動組句 |
 
 #### trigger 格式
 
@@ -356,7 +359,14 @@ v4 的 traits 只是顯示;**v5 的 traits 會在行動階段與結算實際改�
 |---|---|---|---|
 | `round_eq:N` | `round_eq:3` | **A** | 第 N 回合觸發 |
 | `always` | (固定字串) | **A** | 每回合都觸發 |
-| `species_in_habitat_above:N` | `species_in_habitat_above:250` | **B** | 某棲地某物種數 ≥ N(v5 新;搭配該列 target_species + target_habitat 判定) |
+| `species_in_habitat_above` | `species_in_habitat_above` | **B** | 某棲地「**單一物種**」數 ≥ 門檻(門檻填 `threshold_count` 欄、物種填 `target_species`) |
+
+> **2026-05-28 改版:`species_in_habitat_above` 改為「單一物種 + 獨立門檻欄」。**
+> 設計上這類事件對應「某外來種爆量 → 人類介入」,所以**只認單一物種**:
+> - **物種**:填 `target_species`(單一物種 id,如 `red`)。若誤填 `<any>`/多物種/標籤,seed 會警告,引擎執行期只取**第一個**命中物種(不中斷遊戲)。
+> - **門檻 N**:填新欄 `threshold_count`(正整數)。**trigger 不用再寫 `:N`**;但為相容舊資料,`threshold_count` 留空時引擎仍 fallback 解析 trigger 的 `:N`。
+> - **觸發規則**:該物種在某棲地數 ≥ N 即觸發;跨棲地取「實際數 ÷ 門檻」比例最高的 1 筆(仍維持每回合全域最多 1 筆 B 事件、超載優先)。觸發事件標明命中物種(報告 detail 與 trace `hit_species`)。
+> ⚠️ 此語意變更會影響既有以 `<any>`/多物種設定的 B 事件平衡,調參時請留意。
 
 #### 事件分兩類:A 類(必定觸發)vs B 類(條件觸發)
 
@@ -365,7 +375,7 @@ v4 的 traits 只是顯示;**v5 的 traits 會在行動階段與結算實際改�
 | 類型 | 對應 trigger | 觸發規則 | 典型用途 |
 |---|---|---|---|
 | **A 類(必定觸發)** | `round_eq:N`、`always` | **凡命中的全部觸發**,同回合可多筆並存 | 人類開發劇本:排好「第幾回合發生什麼」,時間到一定發生 |
-| **B 類(條件觸發)** | 超載(引擎內建)、`species_in_habitat_above:N` | **每回合全域最多 1 筆**;優先序「超載 > 物種棲地閾值」,多筆閾值同時成立時挑「實際數 ÷ 閾值」比例最高者 | 物種失控的負回饋:數量爆掉才懲罰 |
+| **B 類(條件觸發)** | 超載(引擎內建)、`species_in_habitat_above` | **每回合全域最多 1 筆**;優先序「超載 > 物種棲地閾值」,多筆閾值同時成立時挑「實際數 ÷ 閾值」比例最高者 | 物種失控的負回饋:單一物種數量爆掉才懲罰 |
 
 **重點規則**:
 - **超載是 B 類的內建事件**(不是 events_pool 的某一列):任一棲地總人口超過 `habitat.max_capacity` 就觸發,效果為該棲地各物種人口 ×(1 − 超出%)。它**優先佔用該回合唯一的 B 類名額**——若本回合有棲地超載,所有 `species_in_habitat_above` 事件都不會觸發。
@@ -386,7 +396,7 @@ v4 的 traits 只是顯示;**v5 的 traits 會在行動階段與結算實際改�
 
 ### 3.10 `scout_pool` — 探索卡牌(可調)
 
-學生「探索」時隨機抽 1 筆;若 `unlocked_trait` 有值且未解鎖過,一併解鎖該性狀。v4 起含 4 個篩選欄。
+學生「探索」時隨機抽 1 筆;若 `unlocked_trait` 有值且未解鎖過,一併解鎖該性狀。v4 起含 4 個篩選欄,2026-05-24 再加 3 個棲地數值條件欄(`metric` 系列)。
 
 | 欄 | 型別 | 必填 | 合法值 | 說明 |
 |---|---|---|---|---|
@@ -399,16 +409,26 @@ v4 的 traits 只是顯示;**v5 的 traits 會在行動階段與結算實際改�
 | target_habitat | 文字 | ⬜ | 棲地 id / `<any>` | 哪個棲地能抽到;留空 = `<any>` |
 | required_species | 文字 | ⬜ | 篩選語法 | 需同棲地存在某物種才抽得到;留空 = `<any>` |
 | required_count | 數字 | ⬜ | 整數 | 搭配 required_species 的門檻隻數(預設 1) |
+| **metric** | 文字 | ⬜ | water/vegetation/pollution | **2026-05-24 新**:該棲地數值條件;留空=不檢查 |
+| **metric_value** | 數字 | ⬜ | 0–1 小數 | 門檻值 |
+| **metric_op** | 文字 | ⬜ | `gte` / `lte` | `gte`=以上、`lte`=以下;有 metric 條件者抽宏觀情報時優先 |
 
 **範例**:
 
-| id | title | content | unlocked_trait | available_round | target_habitat |
-|---|---|---|---|---|---|
-| S02 | 同伴不見了 | 昨天在岸邊曬太陽的同伴，今天只剩空殼。 | yellow-moist | 1 | wetland |
-| C03 | 破掉的貨櫃 | 一個鐵箱破了洞，爬出很多小小紅色的東西。 | red-egg-attack | 2 | urban |
-| P01 | 鐵箱子裡 | 我從鐵箱縫隙爬出來，外面味道完全不一樣。 | red-hitchhike | 1 | pond |
+| id | title | content | unlocked_trait | available_round | target_habitat | metric | metric_value | metric_op |
+|---|---|---|---|---|---|---|---|---|
+| TY-AMB-1 | 草叢裡的耐心 | 我躲在濃密的草叢裡一動也不動，蟲子靠近時我一口就抓住。 | yellow-ambush | 1 | `<any>` | | | |
+| MP-HI-1 | 水面浮著油花 | 我看見水面有一層發亮的油花，聞起來怪怪的。 |  | 1 | `<any>` | pollution | 0.5 | gte |
+| P01 | 鐵箱子裡 | 我從鐵箱縫隙爬出來，外面味道完全不一樣。 |  | 1 | pond | | | |
 
-完整 24 張卡見 [v5_data_ready.md §9](v5_data_ready.md)。
+**目前內建 76 張卡**(2026-05-25 大改版),分五類:
+- **T\*** 物種專屬性狀解鎖(24)— 嚴格綁定 `target_species` + `unlocked_trait`
+- **M\*** 宏觀棲地報告(9)— 靠 `metric` 系列觸發,任何物種都可抽
+- **G\*** 通用情報(10)— `<any>/<any>` 安全網
+- **D\*** 族群偵測(9)— 用 `required_species` + `required_count` 描述「誰特別多」
+- **S/F/C/P\*** 棲地情境(24)— 純氛圍文字、不解鎖性狀
+
+完整卡牌定義見 [gas/sheet_setup.gs](../gas/sheet_setup.gs) `V5_DEFAULTS.scout_pool`;篩選邏輯見 [server/src/services/scout-filter.js](../server/src/services/scout-filter.js)。設計脈絡記錄於 [src/changelog.md](../src/changelog.md) 2026-05-25 條目。
 
 ---
 
@@ -419,17 +439,17 @@ v4 的 traits 只是顯示;**v5 的 traits 會在行動階段與結算實際改�
 > ⚠️ **每個 `round_eq:N` 只放 1 筆 A 事件**:生存報告 A 分頁只完整顯示第一筆,同回合多筆會讓第二筆內容看不到。
 > A 事件對全班可見(結算後所有玩家報告都看得到該回合的人類破壞,即使物種未被直接命中)。
 
-| event_id | name | trigger | 類型 | target_habitat | target_species | effect_type | effect_value | polution | message |
-|---|---|---|---|---|---|---|---|---|---|
-| DEV_FARM_R1 | 農藥噴灑 | round_eq:1 | A | wetland | yellow,purple | reduce_pct | 10 | 0.08 | 農田噴灑農藥，水源變得刺鼻，水裡的生物紛紛逃離。 |
-| DEV_SEWAGE_R2 | 家庭廢水 | round_eq:2 | A | wetland | aqua | reduce_pct | 15 | 0.10 | 上游家庭廢水排放增加，水質肉眼可見變濁。 |
-| DEV_LOG_R3 | 林木砍伐 | round_eq:3 | A | forest | `<any>` | reduce_pct | 20 | 0.05 | 大片樹木被砍伐運走，失去樹冠遮蔽的棲地變得炙熱乾燥。 |
-| DEV_FACTORY_R4 | 工廠廢水 | round_eq:4 | A | wetland | aqua | reduce_pct | 25 | 0.20 | 工廠排放廢水，水源染上異色，水生生物大量死亡。 |
-| DEV_COLLAPSE_R5 | 生態崩潰 | round_eq:5 | A | `<any>` | `<any>` | reduce_pct | 35 | 0.20 | 人類的開發讓生態系統全面崩潰，棲地幾乎不適合居住。 |
-| THRESH_RED_250 | 咬傷通報 | species_in_habitat_above:250 | B | `<any>` | red | reduce_pct | 20 | 0.1 | 有農夫被紅火蟻咬傷，政府派人處理。 |
-| THRESH_GREEN_350 | 植被崩潰 | species_in_habitat_above:350 | B | `<any>` | green | reduce_pct | 30 | 0.1 | 綠鬣蜥太多，森林開始枯死。 |
+| event_id | name | trigger | 類型 | target_habitat | target_species | threshold_count | effect_type | effect_value | polution | message |
+|---|---|---|---|---|---|---|---|---|---|---|
+| DEV_FARM_R1 | 農藥噴灑 | round_eq:1 | A | wetland | yellow,purple |  | reduce_pct | 10 | 0.08 | 農田噴灑農藥，水源變得刺鼻，水裡的生物紛紛逃離。 |
+| DEV_SEWAGE_R2 | 家庭廢水 | round_eq:2 | A | wetland | aqua |  | reduce_pct | 15 | 0.10 | 上游家庭廢水排放增加，水質肉眼可見變濁。 |
+| DEV_LOG_R3 | 林木砍伐 | round_eq:3 | A | forest | `<any>` |  | reduce_pct | 20 | 0.05 | 大片樹木被砍伐運走，失去樹冠遮蔽的棲地變得炙熱乾燥。 |
+| DEV_FACTORY_R4 | 工廠廢水 | round_eq:4 | A | wetland | aqua |  | reduce_pct | 25 | 0.20 | 工廠排放廢水，水源染上異色，水生生物大量死亡。 |
+| DEV_COLLAPSE_R5 | 生態崩潰 | round_eq:5 | A | `<any>` | `<any>` |  | reduce_pct | 35 | 0.20 | 人類的開發讓生態系統全面崩潰，棲地幾乎不適合居住。 |
+| THRESH_RED_250 | 咬傷通報 | species_in_habitat_above | B | `<any>` | red | 250 | reduce_pct | 20 | 0.1 | 有農夫被紅火蟻咬傷，政府派人處理。 |
+| THRESH_GREEN_350 | 植被崩潰 | species_in_habitat_above | B | `<any>` | green | 350 | reduce_pct | 30 | 0.1 | 綠鬣蜥太多，森林開始枯死。 |
 
-> 完整事件草稿見 [v5_data_ready.md §8](v5_data_ready.md)(該檔仍是 6 回合版本,搬進 Sheets 時請把 `round_eq:6` 那幾筆併進第 5 回合或捨棄)。
+> 完整事件預設見 [gas/sheet_setup.gs](../gas/sheet_setup.gs) `V5_DEFAULTS.events_pool`(已是 5 回合版本)。
 
 ---
 
@@ -437,20 +457,22 @@ v4 的 traits 只是顯示;**v5 的 traits 會在行動階段與結算實際改�
 
 1. **改了 Sheets 必須 `npm run seed`** 才會進 Postgres,實驗期間別重跑(會清執行期表,需 `--force`)。詳見 [setup.md §Q1](setup.md)。
 2. **`polution` 拼字**:程式欄名就是 `polution`(少一個 l),Sheets 標頭請照打,否則 seed 讀不到、污染永遠 0。
-3. **`metric` / `cond_field` 合法值只有 `water` / `vegetation` / `pollution`**。草稿資料([v5_data_ready.md](v5_data_ready.md))出現的 `food` 欄在 v5 不存在,請改對應到 `vegetation` 或留空,否則該列靜默失效。
+3. **`cond_field` / `habitat_change.metric` / `habitat_affect.metric` / `scout_pool.metric` 合法值只有 `water` / `vegetation` / `pollution`**,**不可填 `food`**(食物是衍生量、不存於棲地)。填到不合法值該列會靜默失效。
 4. **閾值方向**:正=大於、負=小於、等於不套用。寫反了效果會相反。
 5. **`-999` 是禁止標記**:`traits.adjust` 填 `-999` 代表完全禁止該行動,別當成「減 999」。
 6. **trigger 拼錯靜默失敗**:`round_eq=1`(應為 `round_eq:1`)不會報錯也不觸發,seed log 可留意筆數。
 7. **新增第 7 種物種**:物種清單 hardcode 在前後端,只改 Sheet 不夠,需改 [src/js/data.js](../src/js/data.js) 與 [server/src/services/filter-parser.js](../server/src/services/filter-parser.js)。
+8. **AP 模型不在 Sheets 控制**:每回合基礎 10 AP + `bonus_ap`(對話獎勵發,見 [server/src/data/chat-rewards.json](../server/src/data/chat-rewards.json));探索另有獨立次數額度(R1=3, R2-3=4, R4-5=5),**不吃 AP** 也不發 AP。`species_traits.explore_cost` 仍保留但結算路徑不再扣 AP——Sheets 編輯時不必為探索成本糾結。
 
 ---
 
 ## 附:相關檔案
 
 - 部署 / 啟動 / FAQ:[docs/setup.md](setup.md)
-- v5 機制設計與結算公式:[docs/mechanic_v5_plan.md](mechanic_v5_plan.md)
-- 可直接填入的完整資料集:[docs/v5_data_ready.md](v5_data_ready.md)
-- 欄位真相來源:[server/src/db/schema.sql](../server/src/db/schema.sql) / [server/scripts/seed-from-sheets.js](../server/scripts/seed-from-sheets.js)
+- 系統架構(API / state schema):[docs/structure.md](structure.md)
+- 預設資料集(每張表的範例值):[gas/sheet_setup.gs](../gas/sheet_setup.gs) `V5_DEFAULTS.*`
+- 欄位真相來源:[server/src/db/schema.sql](../server/src/db/schema.sql) / [server/src/services/seed.js](../server/src/services/seed.js)
 - 結算引擎:[server/src/services/settlement.js](../server/src/services/settlement.js)
+- 探索抽卡篩選:[server/src/services/scout-filter.js](../server/src/services/scout-filter.js)
 </content>
 </invoke>
