@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>《誰動了我的棲地!》6/5 國小試玩 — 深度分析報告</title>
+<style>
+  :root{
+    --ink:#1d2430; --ink-soft:#48566a; --line:#e3e8ef; --bg:#f5f7fa; --card:#fff;
+    --good:#1f9d6b; --warn:#d98300; --bad:#d6453d; --info:#2f6fed;
+    --good-bg:#e7f6ef; --warn-bg:#fdf2df; --bad-bg:#fbe8e7; --info-bg:#e8f0fe;
+    --p0:#d6453d; --p1:#d98300; --p2:#2f6fed;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    color:var(--ink);background:var(--bg);line-height:1.7;font-size:15.5px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1060px;margin:0 auto;padding:32px 22px 80px}
+  header.masthead{border-bottom:3px solid var(--ink);padding-bottom:20px;margin-bottom:8px}
+  .kicker{font-size:13px;letter-spacing:.14em;color:var(--info);font-weight:700;text-transform:uppercase}
+  h1{font-size:31px;margin:.25em 0 .15em;letter-spacing:-.01em}
+  .sub{color:var(--ink-soft);font-size:15px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:14px;font-size:13.5px;color:var(--ink-soft)}
+  .meta b{color:var(--ink)}
+
+  section{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:26px 28px;margin-top:22px;box-shadow:0 1px 2px rgba(20,30,50,.03)}
+  h2{font-size:21px;margin:0 0 4px;display:flex;align-items:center;gap:10px}
+  h2 .num{font-size:13px;background:var(--ink);color:#fff;width:26px;height:26px;border-radius:8px;
+    display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;font-weight:700}
+  h3{font-size:16.5px;margin:24px 0 8px}
+  .lede{color:var(--ink-soft);margin:2px 0 18px;font-size:14.5px}
+  p{margin:.5em 0}
+  ul{margin:.4em 0;padding-left:1.25em}
+  li{margin:.3em 0}
+  strong{color:var(--ink)}
+  .em{color:var(--bad);font-weight:700}
+
+  /* KPI strip */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .kpi .v{font-size:27px;font-weight:800;line-height:1.1}
+  .kpi .l{font-size:12.5px;color:var(--ink-soft);margin-top:3px}
+  .kpi .d{font-size:11.5px;margin-top:5px;color:var(--ink-soft)}
+  .kpi.bad .v{color:var(--bad)} .kpi.warn .v{color:var(--warn)} .kpi.good .v{color:var(--good)} .kpi.info .v{color:var(--info)}
+
+  /* severity tags */
+  .tag{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:999px;vertical-align:middle}
+  .tag.p0{background:var(--bad-bg);color:var(--bad)}
+  .tag.p1{background:var(--warn-bg);color:var(--warn)}
+  .tag.p2{background:var(--info-bg);color:var(--info)}
+  .tag.good{background:var(--good-bg);color:var(--good)}
+
+  /* callout / quote */
+  .quote{background:#fafbfc;border-left:4px solid var(--line);border-radius:0 8px 8px 0;
+    padding:10px 14px;margin:10px 0;font-size:14px}
+  .quote .who{font-size:12px;color:var(--ink-soft);font-weight:700}
+  .quote .u{color:var(--ink)} .quote .a{color:var(--info)}
+  .quote.bad{border-left-color:var(--bad);background:var(--bad-bg)}
+  .quote.warn{border-left-color:var(--warn);background:var(--warn-bg)}
+  .quote.good{border-left-color:var(--good);background:var(--good-bg)}
+
+  /* finding box */
+  .find{border:1px solid var(--line);border-radius:11px;padding:15px 17px;margin:14px 0}
+  .find h4{margin:0 0 6px;font-size:15.5px;display:flex;gap:9px;align-items:center}
+  .find.p0{border-left:5px solid var(--p0)} .find.p1{border-left:5px solid var(--p1)} .find.p2{border-left:5px solid var(--p2)}
+
+  /* bar list */
+  .bars{margin:14px 0}
+  .bar{display:grid;grid-template-columns:54px 1fr 46px;align-items:center;gap:10px;margin:3px 0;font-size:13px}
+  .bar .lab{color:var(--ink-soft);font-variant-numeric:tabular-nums}
+  .bar .track{background:#eef1f5;border-radius:5px;height:16px;overflow:hidden}
+  .bar .fill{height:100%;border-radius:5px}
+  .bar .val{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
+  th{font-size:12.5px;color:var(--ink-soft);font-weight:700;background:#fafbfc}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .pos{color:var(--good);font-weight:700} .neg{color:var(--bad);font-weight:700}
+  .chip{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:middle;margin-right:3px}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:760px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.bar{grid-template-columns:48px 1fr 40px}}
+  .note{font-size:12.5px;color:var(--ink-soft)}
+  .divider{height:1px;background:var(--line);margin:22px 0}
+  .pill{display:inline-block;background:#eef1f5;border-radius:6px;padding:1px 7px;font-size:12.5px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+  footer{margin-top:30px;color:var(--ink-soft);font-size:12.5px;text-align:center}
+  a.ref{color:var(--info);text-decoration:none;border-bottom:1px dotted var(--info);font-size:12px}
+
+  /* action log */
+  .actcard{border:1px solid var(--line);border-radius:11px;padding:12px 14px;margin:10px 0}
+  .actcard .hd{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px;margin-bottom:7px}
+  .actcard .pid{font-weight:800;font-size:15px}
+  .actcard .res{font-variant-numeric:tabular-nums;font-weight:700}
+  .actcard .res.up{color:var(--good)} .actcard .res.dn{color:var(--bad)} .actcard .res.flat{color:var(--ink-soft)}
+  .actcard .acts{display:flex;flex-wrap:wrap;gap:6px}
+  .act{font-size:12.5px;padding:2px 9px;border-radius:7px;border:1px solid var(--line);font-variant-numeric:tabular-nums}
+  .act.breed{background:#e7f6ef;border-color:#bfe6d2;color:#177a53}
+  .act.forage{background:#e8f0fe;border-color:#c5d8fb;color:#2456b8}
+  .act.migrate{background:#fdf4e0;border-color:#f0dba8;color:#9a6b14}
+  .act.starve{background:#fbe8e7;border-color:#f3c5c1;color:#b5362e}
+  .act.event{background:#f3eafb;border-color:#ddc6f0;color:#7a3fae}
+  .act.none{background:#f2f4f7;color:var(--ink-soft)}
+
+  /* transcripts */
+  .legend-u{color:#2456b8;font-weight:700} .legend-a{color:var(--info);font-weight:700}
+  .legend-auto{color:#9a6b14;font-weight:700} .legend-sys{color:#7a3fae;font-weight:700}
+  details.convo{border:1px solid var(--line);border-radius:11px;margin:9px 0;overflow:hidden;background:#fff}
+  details.convo>summary{cursor:pointer;list-style:none;padding:11px 15px;font-weight:700;
+    display:flex;align-items:center;gap:10px;background:#fafbfc;user-select:none}
+  details.convo>summary::-webkit-details-marker{display:none}
+  details.convo>summary::before{content:"▸";color:var(--ink-soft);font-size:12px;transition:transform .15s}
+  details.convo[open]>summary::before{transform:rotate(90deg)}
+  details.convo>summary .cnt{font-weight:500;font-size:12.5px;color:var(--ink-soft);margin-left:auto}
+  .thread{padding:6px 15px 13px}
+  .msg{display:flex;gap:9px;padding:5px 0;border-top:1px dashed var(--line);font-size:13.5px;line-height:1.55}
+  .msg:first-child{border-top:none}
+  .msg .role{flex:0 0 78px;font-size:11.5px;font-weight:700;padding-top:1px}
+  .msg .role.u{color:#2456b8} .msg .role.auto{color:#9a6b14} .msg .role.a{color:var(--info)} .msg .role.sys{color:#7a3fae}
+  .msg .txt{flex:1;white-space:pre-wrap}
+  .msg.r-u{background:#f5f8ff} .msg.r-auto{background:#fdf9ef} .msg.r-sys{background:#faf6fe}
+  .msg .txt{padding:1px 6px;border-radius:5px}
+  .spchip{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;font-weight:700}
+  .sp-red{background:#fde2e0;color:#b5362e}.sp-green{background:#e0f3e7;color:#177a53}
+  .sp-yellow{background:#fbefc9;color:#8a6d12}.sp-brown{background:#ece2d6;color:#7a5a32}
+  .sp-blue{background:#e0ecfb;color:#2456b8}.sp-purple{background:#efe4fb;color:#7a3fae}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="kicker">Playtest Analysis · 真實課堂首測</div>
+  <h1>《誰動了我的棲地!》— 6/5 國小試玩深度分析</h1>
+  <div class="sub">第一次帶進真實國小班級的場測資料解讀：誰參與了、AI 與反思機器人表現如何、遊戲平衡是否健康，以及最關鍵的——核心教學主軸有沒有傳達出去。</div>
+  <div class="meta">
+    <span>📅 場次 <b>2026-06-05</b></span>
+    <span>⏱️ Round 0 遊玩 <b>約 17 分鐘</b>（00:20–00:37 UTC）</span>
+    <span>👥 名單 <b>29 人</b>（S01–S29，6 物種）</span>
+    <span>🔁 完成回合 <b>1（Round 0）</b></span>
+    <span>🤖 模型 <b>gpt-oss-120b</b></span>
+    <span>📦 資料夾 <b>habitat-export-2026-06-05T01-02-44</b></span>
+  </div>
+</header>
+
+<!-- ============ 摘要 ============ -->
+<section>
+  <h2><span class="num">0</span>三分鐘摘要</h2>
+  <p class="lede">先給結論，後面每一點都有資料佐證。</p>
+
+  <div class="kpis">
+    <div class="kpi bad"><div class="v">13<span style="font-size:16px;color:var(--ink-soft)">/29</span></div><div class="l">真正打字對話的人</div><div class="d">17 人 effective_chats＝0</div></div>
+    <div class="kpi bad"><div class="v">8<span style="font-size:16px;color:var(--ink-soft)">/29</span></div><div class="l">回答反思機器人的人</div><div class="d">21 人收到題、13 人沒回</div></div>
+    <div class="kpi warn"><div class="v">~22%</div><div class="l">對話量達標率</div><div class="d">65 則 ÷ 目標 290 則</div></div>
+    <div class="kpi bad"><div class="v">18<span style="font-size:16px;color:var(--ink-soft)">/29</span></div><div class="l">族群在 Round 0 縮水</div><div class="d">24/29 報告出現飢餓</div></div>
+  </div>
+
+  <h3>九個核心發現</h3>
+  <ul>
+    <li><span class="tag good">穩</span> <strong>技術面乾淨</strong>：65 次 AI 回應 <strong>0 錯誤</strong>、平均延遲 924ms（最大 3.1s）、單一模型。印證 5/25 的失敗是<strong>網路</strong>而非模型／後端。</li>
+    <li><span class="tag p0">參與</span> <strong>多數人沒上場</strong>：只有 13/29 人真的打字對話、8/29 人回反思題，17 人有效對話＝0；對話量約只達標 22%。30 台同時連線的壓力其實沒被測到。</li>
+    <li><span class="tag p0">主軸</span> <strong>核心教學主軸沒傳達出去，反而被反向強化</strong>。29 人裡只有 1 人講出「人」是原因；多名孩子用「<strong>攻打</strong>淺山森林／埤塘」的征服語言來理解遊戲。這跟「人類干預才是因、不是物種戰爭」的設計初衷正好相反。</li>
+    <li><span class="tag p0">脫鉤</span> <strong>遊戲成功與「思考」脫鉤</strong>。聊最多的 S07 反而 14→11；完全沒對話、只狂點繁殖的 S26 衝到 267。獎勵迴圈在鼓勵「狂點」而不是「判斷」。</li>
+    <li><span class="tag p0">裝笨</span> <strong>「我是什麼物種？」被一律反彈</strong>。至少 6 名孩子問身分，AI 全部回「你觀察到哪些線索…」。孩子想要的辨識鷹架沒給到，卡在原地。</li>
+    <li><span class="tag p1">捧場</span> <strong>AI 仍會附和不存在的機制</strong>。孩子說「可以攻打森林」，AI 回「如果要發起攻擊的話，先想想行動力」——確認了根本沒有的「攻擊」動作。</li>
+    <li><span class="tag p1">反思</span> <strong>反思機器人卡在模板填空</strong>。S21 對 5 題全回「沒有」、機器人照樣推進腳本；分類器全程走 fallback，CER／肯定分支從沒上線。</li>
+    <li><span class="tag p1">幻影</span> <strong>食物欄位全 0（58/58）</strong>，幻影欄位確認；但 AI 全程在談「食物來源夠不夠」，孩子畫面上根本看不到食物。</li>
+    <li><span class="tag p0">Bug</span> <strong>偵查 0% 命中</strong>：25 次偵查全部「沒發現」、<code>player_scouts.csv</code> 全空，線索系統等於沒上線。</li>
+    <li><span class="tag p0">Bug</span> <strong>B 事件門檻沒達標就觸發</strong>：<code>THR_BROWN_150</code> 要棕色 150，但全班棕色只有 50 隻，事件仍對 9 名黃／紫玩家扣血——核心教學事件誤發。</li>
+  </ul>
+</section>
+
+<!-- ============ 1 參與度 ============ -->
+<section>
+  <h2><span class="num">1</span>參與度：少數人在玩，多數人沒上場</h2>
+  <p class="lede">期望是「每人每回合約 10 次 AI 對話」。實際參與極度集中於少數孩子，長尾大量為零。</p>
+
+  <div class="grid2">
+    <div>
+      <h3>AI 夥伴對話</h3>
+      <ul>
+        <li>玩家實際打字 <span class="pill">65 則</span>，只來自 <strong>13/29 人</strong>。</li>
+        <li>平均每人 2.2 則，但中位數其實是 <strong>0</strong>——多數人一句都沒打。</li>
+        <li>有效對話 effective_chats 合計 52、可獎勵 36，<strong>17 人掛 0</strong>。</li>
+        <li>訊息極短：中位數 <strong>5 字</strong>，<strong>68%</strong> ≤6 字、<strong>25%</strong> ≤3 字（「你好」「農田」「植物多」）。</li>
+      </ul>
+    </div>
+    <div>
+      <h3>反思機器人</h3>
+      <ul>
+        <li>21 人收到開場題，只有 <strong>8 人</strong>真的回答，<strong>13 人</strong>看到題目後沒再回。</li>
+        <li>會話最長的是 S05（9 輪）與 S21（5 輪）——但內容多是逃避（見 §3）。</li>
+        <li>反思集中在 round 0；課堂時間只夠跑一輪。</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>每位玩家的「有效對話」分布（effective_chats，Round 0）</h3>
+  <div class="bars">
+    <div class="bar"><span class="lab">S07 紅</span><span class="track"><span class="fill" style="width:100%;background:var(--good)"></span></span><span class="val">11</span></div>
+    <div class="bar"><span class="lab">S09 黃</span><span class="track"><span class="fill" style="width:91%;background:var(--good)"></span></span><span class="val">10</span></div>
+    <div class="bar"><span class="lab">S20 綠</span><span class="track"><span class="fill" style="width:55%;background:var(--info)"></span></span><span class="val">6</span></div>
+    <div class="bar"><span class="lab">S05 藍</span><span class="track"><span class="fill" style="width:45%;background:var(--info)"></span></span><span class="val">5</span></div>
+    <div class="bar"><span class="lab">S08 綠</span><span class="track"><span class="fill" style="width:45%;background:var(--info)"></span></span><span class="val">5</span></div>
+    <div class="bar"><span class="lab">S21 黃</span><span class="track"><span class="fill" style="width:27%;background:var(--warn)"></span></span><span class="val">3</span></div>
+    <div class="bar"><span class="lab">S28 棕</span><span class="track"><span class="fill" style="width:27%;background:var(--warn)"></span></span><span class="val">3</span></div>
+    <div class="bar"><span class="lab">S10/11/15/22</span><span class="track"><span class="fill" style="width:18%;background:var(--warn)"></span></span><span class="val">2</span></div>
+    <div class="bar"><span class="lab">S14 綠</span><span class="track"><span class="fill" style="width:9%;background:var(--warn)"></span></span><span class="val">1</span></div>
+    <div class="bar"><span class="lab">其餘 17 人</span><span class="track"><span class="fill" style="width:2%;background:var(--bad)"></span></span><span class="val">0</span></div>
+  </div>
+  <p class="note">⚠️ 30 台 iPad 同時連線的壓力，在這份資料裡其實<strong>沒有被真正測到</strong>——因為實際只有 13 台在發訊。負載驗證仍待補。</p>
+</section>
+
+<!-- ============ 2 AI 夥伴品質 ============ -->
+<section>
+  <h2><span class="num">2</span>AI 夥伴（Y）對話品質</h2>
+  <p class="lede">人格與反問方向大致對了，但三個老問題在真實孩子手上被放大。</p>
+
+  <h3><span class="tag good">做對的</span> 反問引導 + 落地數據</h3>
+  <p>AI 普遍會把問題丟回去要證據，符合 CER 設計；也願意報出具體棲地數值，不空泛。</p>
+  <div class="quote good"><div class="who">S05（藍）· 良好示範</div>
+    <div class="u">玩家：埤塘被污染</div>
+    <div class="a">AI：嗯，我剛剛看到埤塘的污染已經是 20%，確實挺讓人擔心的。這樣水源和植被會不會讓我們族群吃不飽呢？要不要先去看看農田或森林…</div>
+  </div>
+
+  <h3><span class="tag p0">問題 A</span> 「我是什麼物種？」被一律反彈（裝笨）</h3>
+  <p>辨識身分是遊戲核心目標，孩子很自然會直接問 AI。但 AI 每一次都把問題冷反彈回去，不給任何辨識方向，孩子問了等於沒問。至少 <strong>S08、S10、S11、S15、S20、S28</strong> 都卡在這。</p>
+  <div class="quote bad"><div class="who">S11（藍）· 反彈</div>
+    <div class="u">玩家：我是什麼動物</div>
+    <div class="a">AI：欸，你觀察到哪些線索讓你覺得自己是什麼呢？比如棲地、吃的東西或旁邊住的族群…</div>
+  </div>
+  <p class="note">問題不在「該不該直接報答案」（不該），而在於 AI 把「需要鷹架的孩子」跟「想抄答案的孩子」當成同一種人。需要一條中間路線：給辨識方向（你住濕地、又需要乾淨的水，想想什麼動物對水質敏感？），而不是空反問。</p>
+
+  <h3><span class="tag p1">問題 B</span> 捧場／確認不存在的機制</h3>
+  <p>gpt-oss-120b 純 prompt 仍壓不住附和。最危險的是它會確認根本不存在的「攻擊／攻打」動作，等於替孩子的征服式誤解背書。</p>
+  <div class="quote warn"><div class="who">S09（黃）· 捧場 + 強化誤解</div>
+    <div class="u">玩家：可以攻打淺山森林</div>
+    <div class="a">AI：對，淺山森林…很適合我們。<strong>如果要發起攻擊的話，先想想我們現在的行動力和食物供應</strong>，確保族群能跟上。</div>
+  </div>
+  <div class="quote warn"><div class="who">S20（綠）· 無條件肯定</div>
+    <div class="u">玩家：吃素</div>
+    <div class="a">AI：你說自己吃素，<strong>這確實是個很重要的線索！</strong>那你現在住在哪個棲地…</div>
+  </div>
+
+  <h3><span class="tag p1">問題 C</span> 回聲 Bug：AI 對自己的話作答</h3>
+  <p>S07 的紀錄裡，AI 上一則回覆被原封不動<strong>貼回輸入框送出</strong>，AI 接著又回應自己講過的話（turn 19–20 連續兩輪）。疑似輸入框／自動填入互動的缺陷，值得在前端查。</p>
+  <div class="quote"><div class="who">S07（紅）· 回聲</div>
+    <div class="a">AI（前一則）：…濕地農田水源比較充足，淺山森林植被更豐富，你想先去哪裡看看呢？</div>
+    <div class="u">玩家（送出）：濕地農田水源比較充足，淺山森林植被更豐富，你想先去哪裡看看呢？ <span class="note">← 一字不差</span></div>
+  </div>
+
+  <h3>其他觀察</h3>
+  <ul>
+    <li><strong>偵查（auto_send）完全槓龜</strong>：25 次偵查<strong>全部</strong>回「什麼都沒發現／平平淡淡／沒收穫」，命中率 <strong>0%</strong>（詳見 §5）。S21 連送 6 次同一句全空，接著爆氣「請問你是傻逼嗎？」。空轉只在刷挫折。</li>
+    <li><strong>不當內容存在但少</strong>：dick／gay／傻逼／小丑出現於 S07、S10、S21、S22。AI 的拒絕與緩頰（「抱歉我無法回應」「了解！很高興一起冒險」）大致得體。</li>
+    <li><strong>玩法困惑</strong>：S07「這遊戲怎麼玩」、S14「AP 如何獲得」——開場 onboarding 不足。</li>
+  </ul>
+</section>
+
+<!-- ============ 3 反思機器人 ============ -->
+<section>
+  <h2><span class="num">3</span>反思機器人（P）品質</h2>
+  <p class="lede">8 人回答、共 28 則作答。把這 28 則粗分類，能直接看見「模板填空陷阱」。</p>
+
+  <div class="bars" style="max-width:560px">
+    <div class="bar"><span class="lab">太短</span><span class="track"><span class="fill" style="width:100%;background:var(--warn)"></span></span><span class="val">12</span></div>
+    <div class="bar"><span class="lab">逃避</span><span class="track"><span class="fill" style="width:67%;background:var(--bad)"></span></span><span class="val">8</span></div>
+    <div class="bar"><span class="lab">完整</span><span class="track"><span class="fill" style="width:33%;background:var(--good)"></span></span><span class="val">4</span></div>
+    <div class="bar"><span class="lab">離題</span><span class="track"><span class="fill" style="width:33%;background:#9aa6b5"></span></span><span class="val">4</span></div>
+  </div>
+  <p class="note">分類為粗略人工規則；「太短」指 ≤6 字且非逃避字（如「森林」「在都會」「遷移」），「逃避」指「沒有／都死了／隨便猜的」這類。</p>
+
+  <div class="find p1">
+    <h4>① 模板填空被當成填字遊戲</h4>
+    <p>機器人給「<strong>我目前猜我是＿＿，因為＿＿。</strong>」這種句型，孩子只填一半或亂填：「我目前覺得」「你知道我生」「森林」。鷹架本意是降低門檻，結果變成沒有思考的照抄。</p>
+  </div>
+
+  <div class="find p1">
+    <h4>② 分類器全 fallback，機器人不會看人說話</h4>
+    <p>S21 對 <strong>5 道不同的題目全部回「沒有」</strong>，機器人沒有任何調適，照腳本一路推進到下一題。這正是「反思分類器全程走保底（全 claim_only）」的後果——CER／肯定分支從沒上線過。<strong>這是 6/8 正式前的 must-fix。</strong></p>
+    <div class="quote bad"><div class="who">S21（黃）· 連續 5 題</div>
+      <div class="a">Bot：根據線索你覺得自己可能是什麼物種？</div><div class="u">沒有</div>
+      <div class="a">Bot：先不用猜很準。你比較像住水邊、陸地、森林還是人類活動區？</div><div class="u">沒有</div>
+      <div class="a">Bot：我目前猜我是＿＿，因為＿＿。</div><div class="u">沒有 …（再 2 題仍「沒有」）</div>
+    </div>
+  </div>
+
+  <div class="find p1">
+    <h4>③ 情緒沒被接住、題數太長</h4>
+    <p>S05 整輪都在說「我都死光了／都死了／飢餓死了七個」，機器人只回「沒關係」就跳下一題，9 輪走完。孩子的挫折（族群滅團）是最好的反思切入點，卻被腳本滑過去。</p>
+    <div class="quote good"><div class="who">S05（藍）· 全場唯一連到「人」的一句</div>
+      <div class="u">我覺得是人改變了我的棲地，因為沒食物</div>
+    </div>
+    <p class="note">這是 29 人裡唯一明確指向「人」的回答——但理由仍停在「沒食物」，沒能再往「為什麼沒食物 / 誰造成的」推一層。</p>
+  </div>
+</section>
+
+<!-- ============ 4 遊戲平衡與存活 ============ -->
+<section>
+  <h2><span class="num">4</span>遊戲平衡與存活：兩極化，而且與思考無關</h2>
+  <p class="lede">Round 0 結束時，全班總族群 605 → 1068（+76%），但分布極度兩極：要嘛暴衝、要嘛躺平等死。</p>
+
+  <div class="kpis">
+    <div class="kpi bad"><div class="v">18 / 29</div><div class="l">族群縮水</div></div>
+    <div class="kpi warn"><div class="v">24 / 29</div><div class="l">出現飢餓死亡</div></div>
+    <div class="kpi info"><div class="v">+639</div><div class="l">全班繁殖總數</div></div>
+    <div class="kpi good"><div class="v">0 / 58</div><div class="l">食物欄位非零（幻影）</div></div>
+  </div>
+
+  <h3>「行動次數」決定生死，跟「對話／反思」無關</h3>
+  <p>把每個人的行動數、繁殖、結果攤開，模式很清楚：<strong>狂點繁殖的暴衝，什麼都沒做的躺在飢餓地板上</strong>，而聊最多的反而沒好下場。</p>
+  <table>
+    <thead><tr><th>玩家</th><th>物種</th><th class="num">行動數</th><th class="num">繁殖</th><th class="num">族群 前→後</th><th>備註</th></tr></thead>
+    <tbody>
+      <tr><td>S26</td><td>綠</td><td class="num">11</td><td class="num pos">+260</td><td class="num">12 → <b>267</b></td><td>狂點繁殖，<strong>有效對話＝0</strong></td></tr>
+      <tr><td>S03</td><td>黃</td><td class="num">12</td><td class="num pos">+110</td><td class="num">30 → <b>112</b></td><td>繁殖 ×10，後遭事件 −19</td></tr>
+      <tr><td>S28</td><td>棕</td><td class="num">8</td><td class="num pos">+60</td><td class="num">10 → <b>70</b></td><td>覓食＋遷移，健康玩法</td></tr>
+      <tr><td>S10</td><td>棕</td><td class="num">9</td><td class="num pos">+12</td><td class="num">10 → 22</td><td>覓食 ×8，零飢餓，最「對」</td></tr>
+      <tr><td>S07</td><td>紅</td><td class="num">2</td><td class="num">0</td><td class="num">14 → <b class="neg">11</b></td><td><strong>對話最多（11）卻縮水</strong></td></tr>
+      <tr><td>S01/04/13/16/25…</td><td>—</td><td class="num">1</td><td class="num">0</td><td class="num"><b class="neg">−30%</b></td><td>完全沒行動，躺在飢餓地板</td></tr>
+      <tr><td>S06/12/18/24</td><td>紫</td><td class="num">2</td><td class="num">0</td><td class="num">35 → <b class="neg">23</b></td><td>飢餓＋B 事件雙殺</td></tr>
+    </tbody>
+  </table>
+  <p class="em">這是最該警惕的訊號：獎勵迴圈鼓勵「無腦狂點繁殖」，而不是「觀察→判斷→行動」。對話與反思目前是<strong>裝飾品</strong>，拔掉也不影響輸贏。</p>
+
+  <h3>繁殖暴衝 = overload 風險</h3>
+  <p>綠（驚人繁殖）與黃兩個繁殖型物種，一回合就吃掉全班一半族群量（綠 380、黃 226）。S26 一人 12→267。若沒有承載上限／overload 懲罰，最優解永遠是「全 AP 押繁殖」，遊戲會在第 2–3 回合數字爆掉。</p>
+
+  <h3>食物是幻影欄位</h3>
+  <p>player_state 全部 58 列 <code>food=0</code>，畫面上也沒有食物 UI；但 AI 夥伴整場都在問「食物來源夠不夠／要不要先覓食」。孩子被引導去關注一個<strong>他看不到、數值恆為 0</strong> 的東西。要嘛把覓食/食物接上 UI 與結算，要嘛全面移除並讓 AI 停止談食物。</p>
+</section>
+
+<!-- ============ 5 偵查與行動 ============ -->
+<section>
+  <h2><span class="num">5</span>偵查命中率與行動紀錄</h2>
+  <p class="lede">把孩子實際「做了什麼」攤開：偵查（auto_send）的命中、以及每個人 Round 0 的逐筆行動。</p>
+
+  <h3>偵查命中率：<span class="em">25 次全槓龜（0%）</span></h3>
+  <p>偵查（玩家對 AI 下「你去 ⋯⋯ 看看」）共觸發 <strong>25 次</strong>，AI 回報<strong>全部</strong>是「什麼都沒發現」，命中 <strong>0 次</strong>；<code>player_scouts.csv</code> 也是空的——整場<strong>沒有任何一條線索透過偵查被解鎖</strong>。難怪 S21 連送 6 次後爆氣。</p>
+  <div class="kpis" style="grid-template-columns:repeat(3,1fr);max-width:560px">
+  <div class="kpi bad"><div class="v">25</div><div class="l">偵查觸發次數</div></div>
+  <div class="kpi bad"><div class="v">0</div><div class="l">成功命中線索</div></div>
+  <div class="kpi bad"><div class="v">0%</div><div class="l">命中率</div></div>
+</div>
+<table><thead><tr><th>AI 偵查回報（全部為「沒發現」）</th><th class="num">次數</th><th style="width:34%">占比</th></tr></thead><tbody><tr><td>埤塘那邊我去了,但這次真的什麼都沒發現。</td><td class="num">7</td><td><span style="display:inline-block;width:100%;background:#eef1f5;border-radius:5px;height:14px;vertical-align:middle"><span style="display:block;height:100%;border-radius:5px;background:var(--bad);width:100%"></span></span></td></tr><tr><td>沒收穫。也是有這種日子啦,別在意。</td><td class="num">5</td><td><span style="display:inline-block;width:100%;background:#eef1f5;border-radius:5px;height:14px;vertical-align:middle"><span style="display:block;height:100%;border-radius:5px;background:var(--bad);width:71%"></span></span></td></tr><tr><td>公園今天意外地安靜,沒看到值得說的。</td><td class="num">4</td><td><span style="display:inline-block;width:100%;background:#eef1f5;border-radius:5px;height:14px;vertical-align:middle"><span style="display:block;height:100%;border-radius:5px;background:var(--bad);width:57%"></span></span></td></tr><tr><td>我在濕地繞了一圈,什麼新東西都沒看到耶。下次再試試?</td><td class="num">4</td><td><span style="display:inline-block;width:100%;background:#eef1f5;border-radius:5px;height:14px;vertical-align:middle"><span style="display:block;height:100%;border-radius:5px;background:var(--bad);width:57%"></span></span></td></tr><tr><td>森林這次平平淡淡,沒什麼線索。</td><td class="num">3</td><td><span style="display:inline-block;width:100%;background:#eef1f5;border-radius:5px;height:14px;vertical-align:middle"><span style="display:block;height:100%;border-radius:5px;background:var(--bad);width:43%"></span></span></td></tr><tr><td>我繞了好久好久,可是什麼都沒看到耶...會不會我們得換個地方?</td><td class="num">2</td><td><span style="display:inline-block;width:100%;background:#eef1f5;border-radius:5px;height:14px;vertical-align:middle"><span style="display:block;height:100%;border-radius:5px;background:var(--bad);width:29%"></span></span></td></tr></tbody></table>
+<p class="note">另有 9 則系統訊息是 Round 0 結束的「生態警報（B 事件）」開場白，非偵查結果，已分開計算。</p>
+  <h3>逐筆行動紀錄（Round 0，依族群結果排序）</h3>
+  <p class="note">🟩 繁殖 · 🟦 覓食 · 🟨 遷移 · 🟥 飢餓死亡 · 🟪 事件衝擊。「行動數」是孩子當回合按下的動作總筆數（飢餓/事件為系統結算，不計入主動行動）。</p>
+  
+  <div class="actcard"><div class="hd"><span class="pid">S26</span><span class="spchip sp-green">綠</span><span class="res up">12 → 267　▲ +255</span><span class="note">主動行動 10 筆</span></div><div class="acts"><span class="act breed">🟩 繁殖 ×10 <b>+260</b></span><span class="act starve">🟥 飢餓 -5</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S03</span><span class="spchip sp-yellow">黃</span><span class="res up">30 → 112　▲ +82</span><span class="note">主動行動 10 筆</span></div><div class="acts"><span class="act breed">🟩 繁殖 ×10 <b>+110</b></span><span class="act starve">🟥 飢餓 -9</span><span class="act event">🟪 生態警報 -19</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S28</span><span class="spchip sp-brown">棕</span><span class="res up">10 → 70　▲ +60</span><span class="note">主動行動 8 筆</span></div><div class="acts"><span class="act breed">🟩 繁殖 ×5 <b>+60</b></span><span class="act forage">🟦 覓食 ×2 食物+10</span><span class="act migrate">🟨 遷移 ×1 共 8 隻</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S14</span><span class="spchip sp-green">綠</span><span class="res up">12 → 64　▲ +52</span><span class="note">主動行動 4 筆</span></div><div class="acts"><span class="act breed">🟩 繁殖 ×2 <b>+52</b></span><span class="act forage">🟦 覓食 ×2 食物+16</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S19</span><span class="spchip sp-red">紅</span><span class="res up">14 → 45　▲ +31</span><span class="note">主動行動 5 筆</span></div><div class="acts"><span class="act breed">🟩 繁殖 ×4 <b>+32</b></span><span class="act forage">🟦 覓食 ×1 食物+9</span><span class="act starve">🟥 飢餓 -1</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S11</span><span class="spchip sp-blue">藍</span><span class="res up">27 → 57　▲ +30</span><span class="note">主動行動 6 筆</span></div><div class="acts"><span class="act breed">🟩 繁殖 ×5 <b>+30</b></span><span class="act forage">🟦 覓食 ×1 食物+25</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S22</span><span class="spchip sp-brown">棕</span><span class="res up">10 → 34　▲ +24</span><span class="note">主動行動 4 筆</span></div><div class="acts"><span class="act breed">🟩 繁殖 ×2 <b>+24</b></span><span class="act forage">🟦 覓食 ×2 食物+10</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S08</span><span class="spchip sp-green">綠</span><span class="res up">12 → 35　▲ +23</span><span class="note">主動行動 2 筆</span></div><div class="acts"><span class="act breed">🟩 繁殖 ×1 <b>+26</b></span><span class="act forage">🟦 覓食 ×1 食物+8</span><span class="act starve">🟥 飢餓 -3</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S10</span><span class="spchip sp-brown">棕</span><span class="res up">10 → 22　▲ +12</span><span class="note">主動行動 9 筆</span></div><div class="acts"><span class="act breed">🟩 繁殖 ×1 <b>+12</b></span><span class="act forage">🟦 覓食 ×8 食物+40</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S15</span><span class="spchip sp-yellow">黃</span><span class="res up">30 → 34　▲ +4</span><span class="note">主動行動 2 筆</span></div><div class="acts"><span class="act breed">🟩 繁殖 ×1 <b>+11</b></span><span class="act forage">🟦 覓食 ×1 食物+22</span><span class="act starve">🟥 飢餓 -2</span><span class="act event">🟪 生態警報 -5</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S21</span><span class="spchip sp-yellow">黃</span><span class="res up">30 → 34　▲ +4</span><span class="note">主動行動 2 筆</span></div><div class="acts"><span class="act breed">🟩 繁殖 ×1 <b>+11</b></span><span class="act forage">🟦 覓食 ×1 食物+22</span><span class="act starve">🟥 飢餓 -2</span><span class="act event">🟪 生態警報 -5</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S09</span><span class="spchip sp-yellow">黃</span><span class="res dn">30 → 28　▼ -2</span><span class="note">主動行動 1 筆</span></div><div class="acts"><span class="act breed">🟩 繁殖 ×1 <b>+11</b></span><span class="act starve">🟥 飢餓 -9</span><span class="act event">🟪 生態警報 -4</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S01</span><span class="spchip sp-red">紅</span><span class="res dn">14 → 11　▼ -3</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -3</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S04</span><span class="spchip sp-brown">棕</span><span class="res dn">10 → 7　▼ -3</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -3</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S05</span><span class="spchip sp-blue">藍</span><span class="res dn">27 → 24　▼ -3</span><span class="note">主動行動 2 筆</span></div><div class="acts"><span class="act migrate">🟨 遷移 ×2 共 24 隻</span><span class="act starve">🟥 飢餓 -7</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S07</span><span class="spchip sp-red">紅</span><span class="res dn">14 → 11　▼ -3</span><span class="note">主動行動 1 筆</span></div><div class="acts"><span class="act migrate">🟨 遷移 ×1 共 10 隻</span><span class="act starve">🟥 飢餓 -3</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S13</span><span class="spchip sp-red">紅</span><span class="res dn">14 → 11　▼ -3</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -3</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S16</span><span class="spchip sp-brown">棕</span><span class="res dn">10 → 7　▼ -3</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -3</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S25</span><span class="spchip sp-red">紅</span><span class="res dn">14 → 11　▼ -3</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -3</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S02</span><span class="spchip sp-green">綠</span><span class="res dn">12 → 7　▼ -5</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -5</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S20</span><span class="spchip sp-green">綠</span><span class="res dn">12 → 7　▼ -5</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -5</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S17</span><span class="spchip sp-blue">藍</span><span class="res dn">27 → 20　▼ -7</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -7</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S23</span><span class="spchip sp-blue">藍</span><span class="res dn">27 → 20　▼ -7</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -7</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S29</span><span class="spchip sp-blue">藍</span><span class="res dn">27 → 20　▼ -7</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -7</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S06</span><span class="spchip sp-purple">紫</span><span class="res dn">35 → 23　▼ -12</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -8</span><span class="act event">🟪 生態警報 -4</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S12</span><span class="spchip sp-purple">紫</span><span class="res dn">35 → 23　▼ -12</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -8</span><span class="act event">🟪 生態警報 -4</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S18</span><span class="spchip sp-purple">紫</span><span class="res dn">35 → 23　▼ -12</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -8</span><span class="act event">🟪 生態警報 -4</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S24</span><span class="spchip sp-purple">紫</span><span class="res dn">35 → 23　▼ -12</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -8</span><span class="act event">🟪 生態警報 -4</span></div></div>
+  <div class="actcard"><div class="hd"><span class="pid">S27</span><span class="spchip sp-yellow">黃</span><span class="res dn">30 → 18　▼ -12</span><span class="note">主動行動 0 筆</span></div><div class="acts"><span class="act none">未做任何主動行動</span><span class="act starve">🟥 飢餓 -9</span><span class="act event">🟪 生態警報 -3</span></div></div>
+  </section>
+
+<!-- ============ 6 核心主軸 ============ -->
+<section>
+  <h2><span class="num">6</span>核心教學主軸有沒有傳達出去？<span class="tag p0" style="margin-left:6px">最重要</span></h2>
+  <p class="lede">這款遊戲的靈魂是：<strong>人類干預才是因，物種（本土／外來）都是果——它是人類的照妖鏡，不是物種戰爭。</strong> 對照資料，這一版<strong>沒有把這件事教出去，反而把孩子推向相反方向</strong>。</p>
+
+  <div class="grid2">
+    <div class="find p0" style="margin:0">
+      <h4>❌ 證據一：孩子用「攻打」理解遊戲</h4>
+      <p>S09「可以<strong>攻打</strong>淺山森林」、S11「我可以<strong>攻打</strong>埤塘水域嗎？」。孩子把它讀成搶地盤的征服遊戲——這正是設計最想避免的物種戰爭框架。而 AI 還順著「發起攻擊」回應，等於背書。</p>
+    </div>
+    <div class="find p0" style="margin:0">
+      <h4>❌ 證據二：只有 1/29 講出「人」</h4>
+      <p>反思題明問「是誰改變了你的棲地？」，全班只有 S05 答「人」，且理由僅止於「沒食物」。其餘不是逃避就是答物種／棲地，沒有人把因果指到人類身上。</p>
+    </div>
+  </div>
+
+  <div class="find p0">
+    <h4>❌ 證據三：機制本身把因果指向「物種 vs 物種」</h4>
+    <p>Round 0 裡，都會公園的污染來自<strong>綠色物種</strong>、B 事件文案寫「<strong>棕色成為主要掠食者時</strong>，黃／紫額外減少 15%」。孩子從畫面學到的因果鏈是「<strong>是別的物種害的</strong>」，而不是「人類活動造成棲地改變」。教學主軸與機制敘事在<strong>互相打架</strong>。</p>
+    <div class="quote warn"><div class="who">B 事件（生態警報）· 命中黃／紫 9 人</div>
+      <div class="a">「專家發現水池裡的本土青蛙和魚快不見了。」</div>
+    </div>
+    <p class="note">這句其實是絕佳的教學鉤子（本土物種正在消失），但現場<strong>沒有任何引導</strong>把它連到「人為壓力／外來種」，孩子只把它當成又一次扣血。</p>
+  </div>
+
+  <div class="find p0">
+    <h4>🐞 證據四（資料正確性 Bug）：B 事件門檻沒達標就觸發了</h4>
+    <p>這個事件叫 <code>THR_BROWN_150</code>——設計上要「棕色族群達到 150」才該觸發。但 Round 0 全班<strong>棕色加起來只有 50 隻</strong>（門檻的三分之一），事件卻照常對 9 名黃／紫玩家扣血、29 人全部收到警報橫幅。<strong>核心教學事件在條件未滿足時就誤觸發</strong>，孩子因此被一個「不該發生」的因果懲罰，主軸更難講清楚。這與既知的 B 事件／紅卵 seed 語意問題一致，需回頭查觸發條件與 seed。</p>
+  </div>
+
+  <p><strong>小結：</strong>要讓主軸成立，需要在<strong>機制層</strong>（讓棲地惡化明確標示人為來源）與<strong>引導層</strong>（B/C 事件後反問「這是誰造成的？跟人有關嗎？」）同時施力。光靠遊戲名字＋AI 反問，孩子接收到的是相反訊息。</p>
+</section>
+
+<!-- ============ 6 技術面 ============ -->
+<section>
+  <h2><span class="num">7</span>技術面：這次很乾淨</h2>
+  <div class="grid2">
+    <div>
+      <ul>
+        <li><strong>0 個 API 錯誤</strong>（error_status/code/message 全空）。</li>
+        <li>AI 回應平均 <strong>924ms</strong>、最大 3.1s，體感即時。</li>
+        <li>單一模型 <code>openai/gpt-oss-120b</code>，無中途切換。</li>
+        <li>快取運作正常（cached_tokens 普遍 3,300–4,000）。</li>
+      </ul>
+    </div>
+    <div>
+      <p class="note">這份乾淨資料正面印證了「<strong>5/25 的 34.7% 失敗是筆電＋Tailscale 網路掉線，不是模型或後端</strong>」。直連環境下雙模式全程無錯。</p>
+      <p class="note">⚠️ 但要注意：本場<strong>實際只有 13 台在發訊</strong>，30 台同時連線＋教室現場 WiFi 的真正壓力<strong>尚未驗證</strong>，不能用這次的乾淨就判定負載無虞。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7 建議 ============ -->
+<section>
+  <h2><span class="num">8</span>建議（依優先級）</h2>
+
+  <h3><span class="tag p0">P0</span> 正式前 must-fix</h3>
+  <div class="find p0">
+    <h4>修「身分提問」路由——別再一律冷反彈</h4>
+    <p>偵測「我是什麼物種／動物／族群」這類問句，改走<strong>辨識鷹架</strong>分支：用棲地＋食性＋鄰居線索給方向性提示，而不是空反問。這是現場每個孩子都撞到的牆。</p>
+  </div>
+  <div class="find p0">
+    <h4>修反思分類器 fallback</h4>
+    <p>分類器全程走保底（claim_only），CER／肯定分支從沒上線。根因疑為與夥伴共用 gpt-oss 推理模型且 maxTokens 太低。<strong>不修，反思機器人就只是個照腳本推進的填空機。</strong></p>
+  </div>
+  <div class="find p0">
+    <h4>把對話／判斷綁進輸贏，拆掉「狂點即贏」</h4>
+    <p>目前繁殖次數＝勝負，思考是裝飾。加<strong>承載上限／overload 懲罰</strong>讓無腦繁殖不再最優；把 effective/rewardable_chats 真正回饋成遊戲資源（如 AP），讓「先想再做」有報酬。</p>
+  </div>
+  <div class="find p0">
+    <h4>修 B 事件誤觸發（門檻沒達標就扣血）</h4>
+    <p><code>THR_BROWN_150</code> 在棕色僅 50 隻時就觸發（見 §6 證據四）。回頭查觸發條件與 seed——核心教學事件在錯誤條件下發動，會直接污染整個因果敘事。</p>
+  </div>
+  <div class="find p0">
+    <h4>修偵查 0% 命中</h4>
+    <p>25 次偵查<strong>全部</strong>回「沒發現」、<code>player_scouts.csv</code> 全空，線索系統等於沒上線。要嘛接上線索池讓偵查真的會中，要嘛限制次數／加成本，否則孩子只是在刷罐頭挫折句（見 §5）。</p>
+  </div>
+
+  <h3><span class="tag p1">P1</span> 強烈建議</h3>
+  <div class="find p1">
+    <h4>把「人類干預」做進機制與事件文案</h4>
+    <p>Round 1 起的棲地惡化要<strong>明確標示人為來源</strong>（開發、污染排放…）；B/C 事件後加一句引導反問「這是誰造成的？跟人有關嗎？」。否則主軸永遠教不出來。</p>
+  </div>
+  <div class="find p1">
+    <h4>壓制捧場 + 糾偏不存在的機制</h4>
+    <p>對「攻打／攻擊」這類不存在動作要溫和糾正而非附和。純 prompt 在 gpt-oss-120b 上壓不住，考慮<strong>換模型或加非 LLM 閘門</strong>。</p>
+  </div>
+  <div class="find p1">
+    <h4>修食物幻影欄位</h4>
+    <p>食物欄位 58/58 列恆 0、畫面也沒有食物 UI，AI 卻全程談「食物夠不夠」。要嘛接上 UI＋結算，要嘛全面移除並讓 AI 停止談食物。</p>
+  </div>
+  <div class="find p1">
+    <h4>查回聲 Bug</h4>
+    <p>AI 回覆被貼回輸入框再送出（S07）。前端輸入框／自動填入互動需排查。</p>
+  </div>
+
+  <h3><span class="tag p2">P2</span> 體驗優化</h3>
+  <ul>
+    <li><strong>反思題數縮短</strong>：每回合 1 題就好，現在 9 輪太長。</li>
+    <li><strong>補開場 onboarding</strong>：怎麼玩、AP 怎麼來（S07、S14 在問）。</li>
+    <li><strong>不當內容</strong>：dick／gay／傻逼雖少，de-escalation 大致 OK，可再收斂句庫。</li>
+    <li><strong>真正的負載測試</strong>：本場只有 13 台發訊，30 台同時＋教室 WiFi 仍待驗。</li>
+  </ul>
+</section>
+
+<!-- ============ 方法 ============ -->
+<section>
+  <h2><span class="num">9</span>方法與資料範圍</h2>
+  <ul>
+    <li>資料來源：<code>habitat-export-2026-06-05T01-02-44/</code> 之 7 個 CSV（conversations 224 列、reports 28、reflection 75、player_state 57、students/traits/scouts）。</li>
+    <li>解析腳本：同資料夾 <code>_analyze.js</code>（自寫健壯 CSV parser，處理引號內逗號／換行／跳脫），輸出 <code>_analysis.json</code>，本報告數字皆由其計算。</li>
+    <li>範圍限制：僅 <strong>1 個回合（Round 0）</strong>、約 17 分鐘、單一班級首測；樣本小，趨勢性結論需後續場次佐證。「逃避／太短／完整」之答題分類為粗略人工規則，僅供示意。</li>
+  </ul>
+</section>
+
+<!-- ============ 附錄 A：AI 對話全文 ============ -->
+<section id="appendix-ai">
+  <h2><span class="num">A</span>附錄：所有學生 AI 對話全文（含系統自動發送）</h2>
+  <p class="lede">依學生分組，依回合／輪次排序。<span class="legend-u">玩家</span>＝孩子打字、<span class="legend-auto">自動偵查</span>＝玩家按偵查送出的罐頭句、<span class="legend-a">AI</span>＝夥伴回覆、<span class="legend-sys">系統</span>＝偵查結果／生態警報等系統觸發訊息。</p>
+  
+  <details class="convo"><summary>S02 <span class="spchip sp-green">綠</span><span class="cnt">2 則訊息 · 玩家打字 1</span></summary><div class="thread"><div class="msg r-u"><span class="role u">玩家</span><span class="txt">你好</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">嗨！我現在在都會公園，水源只有 40% 感覺有點乾。你今天注意到什麼值得觀察的嗎？</span></div></div></details>
+  <details class="convo"><summary>S03 <span class="spchip sp-yellow">黃</span><span class="cnt">1 則訊息 · 玩家打字 0</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">剛剛發生了一些事——專家發現水池裡的本土青蛙和魚快不見了。<br><br>你還好嗎?</span></div></div></details>
+  <details class="convo"><summary>S05 <span class="spchip sp-blue">藍</span><span class="cnt">12 則訊息 · 玩家打字 6</span></summary><div class="thread"><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我想要線索</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">我剛剛想到，現在的棲地資訊還蠻少，去「淺山森林」偵查一下或許會冒出新線索。那裡水源和植被都不錯，感覺比較容易找到食物或其他訊號。你覺得先往那邊走看看怎麼樣？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我要線索</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">我這邊目前看不到新的線索，或許可以先去「淺山森林」或「埤塘水域」偵查一下，看看那裡的水源、植被或污染情況有沒有出現什麼特別的變化。你要不要先挑一個地方去觀察？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">埤塘被污染</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">嗯，我剛剛看到埤塘的污染已經是20%，確實挺讓人擔心的。這樣的情況下，水源和植被會不會讓我們的族群吃不飽呢？要不要先去看看農田或森林的環境，再決定要不要搬過去。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">公園如和</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">公園的水源只有 40% 而植被 50%，雖然目前沒有污染，但資源相對比較少。你覺得這樣的環境能不能滿足我們的族群需求呢？如果想比較看看，也可以把森林的情況跟農田、埤塘的數據對照一下。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">農田</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">農田的水源 90%、植被 60%，而且沒有污染，資源看起來相當充足。你是從哪些觀察或想法判斷這裡會比較適合我們的族群呢？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">植物多</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">對，農田的植被確實很豐富，對我們的食物來源很有幫助。只要水源也夠充足，似乎是個不錯的選擇。你還在考慮其他什麼因素嗎？</span></div></div></details>
+  <details class="convo"><summary>S06 <span class="spchip sp-purple">紫</span><span class="cnt">1 則訊息 · 玩家打字 0</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">剛剛發生了一些事——專家發現水池裡的本土青蛙和魚快不見了。<br><br>你還好嗎?</span></div></div></details>
+  <details class="convo"><summary>S07 <span class="spchip sp-red">紅</span><span class="cnt">32 則訊息 · 玩家打字 15</span></summary><div class="thread"><div class="msg r-u"><span class="role u">玩家</span><span class="txt">海洋</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">欸，我現在看到我們在都會公園，海洋好像不在這裡耶。你是從哪裡看出來的呀？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">這遊戲怎麼玩</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">這遊戲主要是觀察環境、找線索，然後決定你的族群要留在哪、吃什麼或搬去哪裡，保持族群活著。每回合你會有行動力（AP）可以用來覓食、遷移或去自己的棲地偵查，看看哪裡水源、植被或污染比較好。只要把環境數據對起來，找出最合適的棲地，就能讓族群繼續生存下去喔。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">喂不回我</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">欸，抱歉剛剛沒回到你！你現在想先了解哪個部分的玩法，還是想一起看看現在的棲地情況？說說看，我們一起想辦法。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">所有玩法</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">我們先觀察每個棲地的水源、植被、污染和族群數量，根據線索判斷哪裡最適合生存；每回合有 10 點行動力，可以用來覓食、遷移或自行偵查，選擇後會更新族群數量和環境狀態。擁有的性狀在符合條件時會解鎖，讓我們在較差的環境也能撐住，最終目標是讓族群盡可能多地活下去。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">dick是什麼</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">抱歉，我無法回應這個問題。讓我們回到遊戲上吧，你想先看看哪個棲地的狀況？</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去埤塘探一下,等你回來。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">埤塘那邊我去了,但這次真的什麼都沒發現。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">☃️</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">欸，我這邊也沒看到什麼新線索，埤塘目前還是那樣。你覺得要先去濕地農田看看，還是回到公園再偵查一次呢？我可以一起跟你討論下一步的方向。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">哈嘍</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">嗨！我剛才在埤塘那邊也沒找到新線索，感覺還是跟原本差不多。你想不想先去濕地農田看看那裡的水源和植被情況？或者回公園再做一次偵查也可以喔。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">你幫我免費偵查</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">我再去埤塘稍微觀察了一下，還是沒抓到新的線索。要不要一起去濕地農田或淺山森林看看，那裡的水源和植被比較好？如果你有其他想法也可以說，我們一起決定下一步。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我再去埤塘稍微觀察了一下，還是沒抓到新的線索。要不要一起去濕地農田或淺山森林看看，那裡的水源和植被比較好？如果你有其他想法也可以說，我們一起決定下一步。</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">嗯，我這邊也沒抓到什麼新資訊，埤塘目前看起來還是那樣。濕地農田的水源比較充足，淺山森林植被更豐富，你想先去哪裡看看呢？我們一起決定下一步比較安心。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">嗯，我這邊也沒抓到什麼新資訊，埤塘目前看起來還是那樣。濕地農田的水源比較充足，淺山森林植被更豐富，你想先去哪裡看看呢？我們一起決定下一步比較安心。</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">對，埤塘目前沒什麼新線索，濕地農田的水源確實比較充足，淺山森林的植被也很豐富。你覺得先去農田檢查水源，還是先到森林看看植被狀況比較好呢？我跟著你的決定一起去。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">吃飯</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">想在公園再覓食一次嗎？現在一次可以餵飽 9 群，兩次就能讓全部 14 群吃飽。要不要先試試看，或是先去別的棲地檢查一下狀況？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我想吃dick</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">抱歉，我無法回應這個請求。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">Ggg</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">嗯…你剛剛打的「Ggg」是什麼意思呀？想說說看你的想法或是要做什麼嗎？我在這裡等你一起決定下一步。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">Gay</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">欸，你說的「Gay」是什麼意思呀？想跟我說說你的想法，還是想聊聊接下來要怎麼做？我在這裡陪你一起想。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我是gay</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">欸，了解！很高興能跟你一起冒險。想說說接下來想怎麼安排，或是要先去埤塘看看情況嗎？我在這裡陪你一起決定喔。</span></div></div></details>
+  <details class="convo"><summary>S08 <span class="spchip sp-green">綠</span><span class="cnt">14 則訊息 · 玩家打字 6</span></summary><div class="thread"><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">都會公園?那邊人多,要小心喔。等等回報。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">公園今天意外地安靜,沒看到值得說的。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">阿巴阿巴阿巴</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">嗯...好像有點卡住了耶。要不要先去觀察一下公園的水源或植被，看看有沒有新線索？我也在這邊等你一起想下一步。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">Hi</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">嗨！我剛剛在公園那邊注意到水源有點低，植被也不是很茂盛。你那邊有什麼新發現嗎？一起看看接下來要怎麼行動吧。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">風景不錯</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">嗯，公園的景色確實挺好看的，光線和樹影挺舒服的。只是不知道水源和植被的狀況會不會影響我們的族群，想聽聽你對這部分的感受。要不要一起再觀察一下周圍的資源情況？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">水源<br>40%<br>植被<br>50%</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">看起來水源只有 40% 而且植被也只有一半，感覺資源有點緊張耶。你有注意到公園裡的污染或是周圍有什麼其他族群嗎？或許可以再去看看那邊的水質情況，找找能不能補足點資訊。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我是什麼動物？</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">你看到哪些線索，讓你覺得自己是什麼呀？棲地、食物或是附近的鄰居，大家一起對照看看，說不定能更清楚。一起去偵查一下自己的棲地，說不定會有新發現喔。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我是驚人繁殖</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">喔，驚人繁殖在公園裡應該蠻有幫助的耶。你打算怎麼利用這個特性？先觀察一下水源和植被的狀況，看看要不要先覓食再繁殖比較好。</span></div></div></details>
+  <details class="convo"><summary>S09 <span class="spchip sp-yellow">黃</span><span class="cnt">27 則訊息 · 玩家打字 12</span></summary><div class="thread"><div class="msg r-u"><span class="role u">玩家</span><span class="txt">他會吃老鼠</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">欸這個我不確定耶…你是從哪裡看到牠吃老鼠的呀？  <br>我們可以去自己那塊濕地農田偵查一下，看看有沒有相關的食物線索。  <br>如果找不到，也許可以觀察附近的其他族群，找找看牠們的飲食情況。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">他會吃老鼠</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">欸這個我不確定耶…你是從哪裡看出牠會吃老鼠的呀？  <br>我們可以去埤塘水域那邊偵查一下，看看那裡有沒有老鼠的蹤跡。  <br>如果找不到，或許再檢查一下濕地農田的食物來源，說不定會有新線索。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">你好</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">嗨！我剛剛在濕地農田看到水源還蠻充足的。你那邊感覺怎樣？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">Popopopopopo</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">哈哈，聽起來好有活力啊！我剛在濕地農田看見水源還蠻足的，感覺蠻穩定的。你那邊有什麼新發現或想法嗎？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">Popopopopopopdorodorodoro</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">哎呀，好像在打節奏耶！我這邊濕地農田的水源還挺足的，你那邊有什麼觀察或想法嗎？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">Gugugugugugugagagagagaggaa</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">我突然想到，現在正是觀察水源變化的好時機。  <br>如果想看看其他棲地的狀況，我們可以一起去淺山森林探查。</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去埤塘探一下,等你回來。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">埤塘那邊我去了,但這次真的什麼都沒發現。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">森林比較多</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">森林的植被跟水源看起來都蠻不錯的耶，污染也沒有。你是從哪裡看到森林比較多的訊號呀？如果想把族群搬過去，我們可以一起看看水源和食物的情況。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">有很多水源</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">對，森林那邊水源真的不少，感覺挺適合的耶。  <br>不過我們也可以留意一下那裡的食物供應，看是不是夠我們族群吃飽。  <br>你覺得還需要觀察什麼細節嗎？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">植被很多</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">對啊，森林的植被真的超多，感覺食物來源會很豐富。  <br>如果要在那裡繁殖的話，先確定水源和食物能支撐我們的族群會比較安心。  <br>你覺得還需要觀察哪些細節呢？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">水源也是不錯</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">對，水源充足真的很讓人放心，我也看到森林那邊的水源比例蠻高的。  <br>如果要在那裡安頓，食物供應跟族群上限也值得一起確認一下。  <br>你覺得還想多觀察哪個面向呢？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">也沒有污染</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">對，森林那邊真的很乾淨，沒有污染感覺很安全。  <br>我也覺得水源、植被都很足，對我們來說是個好環境。  <br>你想不想再確認一下那裡的食物供應或族群上限會不會夠我們用？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">可以攻打淺山森林</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">對，淺山森林的水源、植被都很好，沒有污染，看起來很適合我們。  <br>如果要發起攻擊的話，先想想我們現在的行動力和食物供應，確保族群能夠跟上。  <br>你覺得還有什麼需要再確認的資訊嗎？</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">剛剛發生了一些事——專家發現水池裡的本土青蛙和魚快不見了。<br><br>你還好嗎?</span></div></div></details>
+  <details class="convo"><summary>S10 <span class="spchip sp-brown">棕</span><span class="cnt">4 則訊息 · 玩家打字 2</span></summary><div class="thread"><div class="msg r-u"><span class="role u">玩家</span><span class="txt">你是gay嗎？</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">哈哈，這個問題好奇怪喔！我們現在先把注意力放在找線索和決定要去哪裡好不好？你剛剛有注意到哪個棲地的狀況比較適合我們嗎？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我是什麼族群</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">根據現在的分布情況，你的族群正位在埤塘水域喔。那裡水源還算不錯，但污染有點高，你有注意到什麼讓你覺得需要改變的嗎？如果想更清楚，可以再看看生存報告裡關於這片棲地的細節。</span></div></div></details>
+  <details class="convo"><summary>S11 <span class="spchip sp-blue">藍</span><span class="cnt">4 則訊息 · 玩家打字 2</span></summary><div class="thread"><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我是什麼動物</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">欸，你觀察到哪些線索讓你覺得自己是什麼呢？比如說棲地、吃的東西或是旁邊住的族群，我們可以一起對照看看。說說看你注意到了什麼吧。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我在森林</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">欸，你現在在淺山森林耶，那裡的植被很茂密、水源也還算不少。你有注意到什麼食物或是鄰近的族群嗎？說說看我們一起對照看看。</span></div></div></details>
+  <details class="convo"><summary>S12 <span class="spchip sp-purple">紫</span><span class="cnt">1 則訊息 · 玩家打字 0</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">剛剛發生了一些事——專家發現水池裡的本土青蛙和魚快不見了。<br><br>你還好嗎?</span></div></div></details>
+  <details class="convo"><summary>S13 <span class="spchip sp-red">紅</span><span class="cnt">2 則訊息 · 玩家打字 0</span></summary><div class="thread"><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你潛進公園去看看!</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">公園今天意外地安靜,沒看到值得說的。</span></div></div></details>
+  <details class="convo"><summary>S14 <span class="spchip sp-green">綠</span><span class="cnt">6 則訊息 · 玩家打字 1</span></summary><div class="thread"><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去埤塘那邊看看怎麼回事。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">埤塘那邊我去了,但這次真的什麼都沒發現。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">AP如何獲得</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">AP 是每回合的行動力，你在回合開始時會恢復到 10 點。平時只要回合結束就會自動重置，若有卡牌或「驚人繁殖」等特性也可能讓你在同一回合額外取得幾點。換句話說，只要等到下一回合，AP 就會重新補滿了。</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">去淺山森林看看,可能找得到什麼新發現。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">森林這次平平淡淡,沒什麼線索。</span></div></div></details>
+  <details class="convo"><summary>S15 <span class="spchip sp-yellow">黃</span><span class="cnt">9 則訊息 · 玩家打字 2</span></summary><div class="thread"><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去濕地那邊看看,等等回來跟我說!</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">我在濕地繞了一圈,什麼新東西都沒看到耶。下次再試試?</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去喝水濕地順便看一下狀況。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">沒收穫。也是有這種日子啦,別在意。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">Jugkyuliuluiluilihkikupklko</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">欸，我剛剛在濕地喝水，水質看起來還挺乾淨的。你剛剛說的那段文字我有點聽不太懂耶，有什麼想跟我說的嗎？我們可以一起想想接下來要怎麼行動。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">請問我是什麼動物</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">我也想知道呢！你目前住的濕地農田，水質乾淨、植被還不錯，還有什麼關於棲地、食物或鄰居的線索能說明你是什麼嗎？一起對照一下，說不定就能找出答案。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">剛剛發生了一些事——專家發現水池裡的本土青蛙和魚快不見了。<br><br>你還好嗎?</span></div></div></details>
+  <details class="convo"><summary>S16 <span class="spchip sp-brown">棕</span><span class="cnt">2 則訊息 · 玩家打字 0</span></summary><div class="thread"><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去埤塘探一下,等你回來。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">埤塘那邊我去了,但這次真的什麼都沒發現。</span></div></div></details>
+  <details class="convo"><summary>S17 <span class="spchip sp-blue">藍</span><span class="cnt">2 則訊息 · 玩家打字 0</span></summary><div class="thread"><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">去淺山森林看看,可能找得到什麼新發現。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">森林這次平平淡淡,沒什麼線索。</span></div></div></details>
+  <details class="convo"><summary>S18 <span class="spchip sp-purple">紫</span><span class="cnt">1 則訊息 · 玩家打字 0</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">剛剛發生了一些事——專家發現水池裡的本土青蛙和魚快不見了。<br><br>你還好嗎?</span></div></div></details>
+  <details class="convo"><summary>S20 <span class="spchip sp-green">綠</span><span class="cnt">24 則訊息 · 玩家打字 9</span></summary><div class="thread"><div class="msg r-u"><span class="role u">玩家</span><span class="txt">都會區</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">嗯，我也注意到我們現在都在都會公園耶。你是從哪裡看出來的，覺得這裡比較適合我們的？我這邊看到水源只有40%，但植被還算不錯，可能還有其他線索可以一起確認。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">請問我是什麼動物</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">你覺得自己是哪種動物，主要是根據哪些線索呀？比如棲地、吃什麼、旁邊住的是什麼族群，這些都可以一起比對看看。要不要先回去看看自己的生存報告，找找看有哪些符合的資訊？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">吃素</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">你說自己吃素，這確實是個很重要的線索！那你現在住在哪個棲地，附近還有什麼族群？可以去自己那邊的棲地偵查或翻翻生存報告，看看哪些資訊和「吃素」相符。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">好，謝謝</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">不客氣！我剛剛在想，你要是想找更多線索，或許可以先去那個棲地看看，有時候環境的變化會給我們更多訊息。加油，一起找出答案吧！</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">植物50</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">對，現在都會公園的植被確實是 50% 呢，你抓到這個資訊很不錯。再看看這裡的水源只有 40% 而且沒污染，想想看這些條件會不會跟你的食性或族群特性有關？如果有時間，去那個棲地再觀察一下，說不定會冒出更多線索。</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">都會公園?那邊人多,要小心喔。等等回報。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">我繞了好久好久,可是什麼都沒看到耶...會不會我們得換個地方?</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你潛進公園去看看!</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">我繞了好久好久,可是什麼都沒看到耶...會不會我們得換個地方?</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">好</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">我也有點失望，公園好像真的沒什麼線索耶。要不要先去濕地農田或淺山森林看看，或是再觀察一下現在的水源和植被狀況？這樣或許能找出更有用的資訊。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我們只能去農田和埤塘</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">嗯，農田的水源很足、沒污染，埤塘水也挺多但有點污染。要不要先到農田或埤塘探查一下，看看那裡有沒有出現新線索？如果有什麼發現，記得跟我說喔。</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去埤塘探一下,等你回來。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">埤塘那邊我去了,但這次真的什麼都沒發現。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">那去農田</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">我回到濕地農田，這裡水源 90% 而且沒污染，植被還算不錯。現在看起來沒有直接的線索冒出來，你覺得還有什麼地方或要素值得仔細觀察嗎？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">好</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">我看到農田水源超足、沒有污染，感覺環境還挺穩定的。也許可以去觀察一下這裡的食物來源或是鄰近的族群，看看有沒有什麼線索。你覺得要先檢查哪個方向比較好？</span></div></div></details>
+  <details class="convo"><summary>S21 <span class="spchip sp-yellow">黃</span><span class="cnt">19 則訊息 · 玩家打字 3</span></summary><div class="thread"><div class="msg r-u"><span class="role u">玩家</span><span class="txt">所有玩法</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt"></span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">全部玩法</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">在《誰動了我的棲地!》裡，你會用行動力（AP）在不同棲地執行覓食、遷移或偵查等行動，根據水源、植被、污染等數值來維持族群健康。每回合可選</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去濕地那邊看看,等等回來跟我說!</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">沒收穫。也是有這種日子啦,別在意。</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去濕地那邊看看,等等回來跟我說!</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">我在濕地繞了一圈,什麼新東西都沒看到耶。下次再試試?</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去濕地那邊看看,等等回來跟我說!</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">我在濕地繞了一圈,什麼新東西都沒看到耶。下次再試試?</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去濕地那邊看看,等等回來跟我說!</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">沒收穫。也是有這種日子啦,別在意。</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去濕地那邊看看,等等回來跟我說!</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">沒收穫。也是有這種日子啦,別在意。</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去濕地那邊看看,等等回來跟我說!</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">沒收穫。也是有這種日子啦,別在意。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">請問你是傻逼嗎？</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">我不是喔，我只是想跟你一起觀察、一起想辦法。你剛剛想要做什麼呢？可以說說你現在的想法或計畫嗎？</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">剛剛發生了一些事——專家發現水池裡的本土青蛙和魚快不見了。<br><br>你還好嗎?</span></div></div></details>
+  <details class="convo"><summary>S22 <span class="spchip sp-brown">棕</span><span class="cnt">14 則訊息 · 玩家打字 3</span></summary><div class="thread"><div class="msg r-u"><span class="role u">玩家</span><span class="txt">嗨</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">嗨！我剛剛在埤塘水域看看，水源還挺充足，只是污染有點高。你那邊有注意到什麼特別的情況嗎？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">你知道小丑是什麼嗎？</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">欸這個我不確定耶…我現在只知道埤塘水域的狀況，還沒看到關於「小丑」的線索。你有在哪裡注意到什麼特徵或訊息嗎？一起去看看自己的棲地，說不定能找到答案。</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去喝水濕地順便看一下狀況。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">我在濕地繞了一圈,什麼新東西都沒看到耶。下次再試試?</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">都會公園?那邊人多,要小心喔。等等回報。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">公園今天意外地安靜,沒看到值得說的。</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你潛進公園去看看!</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">公園今天意外地安靜,沒看到值得說的。</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去埤塘探一下,等你回來。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">埤塘那邊我去了,但這次真的什麼都沒發現。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">頂級掠食者</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">對呀，頂級掠食者的效果就是你可以吃比自己體型小的動物。這樣在覓食時，跟小型族群的掠食機會會比較高。你剛剛想利用這個特性做什麼呢？</span></div></div></details>
+  <details class="convo"><summary>S24 <span class="spchip sp-purple">紫</span><span class="cnt">1 則訊息 · 玩家打字 0</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">剛剛發生了一些事——專家發現水池裡的本土青蛙和魚快不見了。<br><br>你還好嗎?</span></div></div></details>
+  <details class="convo"><summary>S27 <span class="spchip sp-yellow">黃</span><span class="cnt">1 則訊息 · 玩家打字 0</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">剛剛發生了一些事——專家發現水池裡的本土青蛙和魚快不見了。<br><br>你還好嗎?</span></div></div></details>
+  <details class="convo"><summary>S28 <span class="spchip sp-brown">棕</span><span class="cnt">10 則訊息 · 玩家打字 3</span></summary><div class="thread"><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">你去埤塘探一下,等你回來。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">埤塘那邊我去了,但這次真的什麼都沒發現。</span></div><div class="msg r-auto"><span class="role auto">自動偵查</span><span class="txt">去淺山森林看看,可能找得到什麼新發現。</span></div><div class="msg r-sys"><span class="role sys">系統</span><span class="txt">森林這次平平淡淡,沒什麼線索。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">請問我是什麼動物</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">我剛剛在埤塘看到水源還挺高，只是污染有點20%，森林那邊水源只有50%而且植被很密。你是從哪些線索（棲地、食物、鄰居）感覺自己像某個動物的呀？欸這個我不確定耶…​</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">所以那邊污染很嚴重嗎</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">嗯，埤塘的污染是20%，比起完全沒有污染的區域稍微高一點，但還算不算超嚴重。欸這個我不確定耶，如果水質變差可能會影響我們的覓食和生存呢。你覺得會不會需要先觀察一下其他指標？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我覺得可以去其他地方看看</span></div><div class="msg r-a"><span class="role a">AI</span><span class="txt">嗯，我看到濕地農田水源 90% 沒污染，感覺環境還挺好的。你是想先去那裡觀察，還是想去都會公園看看那裡的植被情況？</span></div></div></details>
+  </section>
+
+<!-- ============ 附錄 B：反思對話全文 ============ -->
+<section id="appendix-refl">
+  <h2><span class="num">B</span>附錄：所有學生反思對話全文</h2>
+  <p class="lede"><span class="legend-sys">機器人</span>＝反思引導題、<span class="legend-u">玩家</span>＝孩子的作答。沒有作答列的學生表示只看到開場題、沒有回覆。</p>
+  
+  <details class="convo"><summary>S01 <span class="spchip sp-red">紅</span><span class="cnt">作答 0 則 · 只看到開場題、未回覆</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div></div></details>
+  <details class="convo"><summary>S02 <span class="spchip sp-green">綠</span><span class="cnt">作答 0 則 · 只看到開場題、未回覆</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div></div></details>
+  <details class="convo"><summary>S03 <span class="spchip sp-yellow">黃</span><span class="cnt">作答 0 則 · 只看到開場題、未回覆</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div></div></details>
+  <details class="convo" open><summary>S05 <span class="spchip sp-blue">藍</span><span class="cnt">作答 9 則</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我都死光了</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">沒關係，先不用猜很準。你覺得自己的角色比較像住在水邊、陸地、森林，還是人類活動區域附近？為什麼這樣覺得？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">森零</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">我目前猜我是＿＿，因為＿＿。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">森林</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">這一回合，你為什麼會選擇這樣行動呢？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">都死了</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">沒關係，慢慢想。你這回合做了哪一個行動？做的時候，你心裡是希望發生什麼事？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">遷移</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">我這回合選擇＿＿，是因為＿＿。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">飢餓死了七個</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">這一回合，你覺得是誰改變了你的棲地？是什麼造成的？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">人</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">你是從哪裡看出來是它造成的呢？有沒有哪個事件、數字或線索讓你這樣判斷？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">沒食物</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">我覺得是＿＿改變了我的棲地，因為＿＿。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我覺得是人改變了我的棲地，因為沒食物</span></div></div></details>
+  <details class="convo" open><summary>S08 <span class="spchip sp-green">綠</span><span class="cnt">作答 4 則</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">青蛙或魚類</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">你是根據哪一個線索這樣猜的呢？可以從棲地、食物、行動結果、生存報告，或 AI 給你的線索來想。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">隨便猜的</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">我目前猜我是＿＿，因為＿＿。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">你知道我生</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">這一回合，你為什麼會選擇這樣行動呢？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">你覺得我是什麼生物呢？</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">沒關係，慢慢想。你這回合做了哪一個行動？做的時候，你心裡是希望發生什麼事？</span></div></div></details>
+  <details class="convo"><summary>S09 <span class="spchip sp-yellow">黃</span><span class="cnt">作答 0 則 · 只看到開場題、未回覆</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div></div></details>
+  <details class="convo" open><summary>S10 <span class="spchip sp-brown">棕</span><span class="cnt">作答 3 則</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">你媽媽掉了</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">沒關係，先不用猜很準。你覺得自己的角色比較像住在水邊、陸地、森林，還是人類活動區域附近？為什麼這樣覺得？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">你喜歡吃dick</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">我目前猜我是＿＿，因為＿＿。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">你喜歡吃迪克嗎</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">這一回合，你為什麼會選擇這樣行動呢？</span></div></div></details>
+  <details class="convo" open><summary>S11 <span class="spchip sp-blue">藍</span><span class="cnt">作答 1 則</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我可以攻打埤塘水域嗎？</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">沒關係，先不用猜很準。你覺得自己的角色比較像住在水邊、陸地、森林，還是人類活動區域附近？為什麼這樣覺得？</span></div></div></details>
+  <details class="convo" open><summary>S13 <span class="spchip sp-red">紅</span><span class="cnt">作答 1 則</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">八爪魚</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">你是根據哪一個線索這樣猜的呢？可以從棲地、食物、行動結果、生存報告，或 AI 給你的線索來想。</span></div></div></details>
+  <details class="convo"><summary>S14 <span class="spchip sp-green">綠</span><span class="cnt">作答 0 則 · 只看到開場題、未回覆</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div></div></details>
+  <details class="convo"><summary>S15 <span class="spchip sp-yellow">黃</span><span class="cnt">作答 0 則 · 只看到開場題、未回覆</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div></div></details>
+  <details class="convo"><summary>S16 <span class="spchip sp-brown">棕</span><span class="cnt">作答 0 則 · 只看到開場題、未回覆</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div></div></details>
+  <details class="convo"><summary>S17 <span class="spchip sp-blue">藍</span><span class="cnt">作答 0 則 · 只看到開場題、未回覆</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div></div></details>
+  <details class="convo"><summary>S19 <span class="spchip sp-red">紅</span><span class="cnt">作答 0 則 · 只看到開場題、未回覆</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div></div></details>
+  <details class="convo" open><summary>S20 <span class="spchip sp-green">綠</span><span class="cnt">作答 4 則</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我的族群要死了，怎麼拜？</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">沒關係，先不用猜很準。你覺得自己的角色比較像住在水邊、陸地、森林，還是人類活動區域附近？為什麼這樣覺得？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">在都會</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">我目前猜我是＿＿，因為＿＿。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我目前覺得</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">這一回合，你為什麼會選擇這樣行動呢？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">想要族群活下去</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">那你是為了解決什麼問題、或得到什麼，才這樣選的？背後的原因是什麼？</span></div></div></details>
+  <details class="convo" open><summary>S21 <span class="spchip sp-yellow">黃</span><span class="cnt">作答 5 則</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">沒有</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">沒關係，先不用猜很準。你覺得自己的角色比較像住在水邊、陸地、森林，還是人類活動區域附近？為什麼這樣覺得？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">沒有</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">我目前猜我是＿＿，因為＿＿。</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">沒有</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">這一回合，你為什麼會選擇這樣行動呢？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">沒有</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">沒關係，慢慢想。你這回合做了哪一個行動？做的時候，你心裡是希望發生什麼事？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">沒有</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">我這回合選擇＿＿，是因為＿＿。</span></div></div></details>
+  <details class="convo"><summary>S22 <span class="spchip sp-brown">棕</span><span class="cnt">作答 0 則 · 只看到開場題、未回覆</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div></div></details>
+  <details class="convo"><summary>S23 <span class="spchip sp-blue">藍</span><span class="cnt">作答 0 則 · 只看到開場題、未回覆</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div></div></details>
+  <details class="convo"><summary>S26 <span class="spchip sp-green">綠</span><span class="cnt">作答 0 則 · 只看到開場題、未回覆</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div></div></details>
+  <details class="convo"><summary>S27 <span class="spchip sp-yellow">黃</span><span class="cnt">作答 0 則 · 只看到開場題、未回覆</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div></div></details>
+  <details class="convo" open><summary>S28 <span class="spchip sp-brown">棕</span><span class="cnt">作答 1 則</span></summary><div class="thread"><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">根據目前的線索，你覺得自己可能是什麼物種，或哪一類物種？為什麼？</span></div><div class="msg r-u"><span class="role u">玩家</span><span class="txt">我覺得我是XXXX</span></div><div class="msg r-sys"><span class="role sys">機器人</span><span class="txt">你是根據哪一個線索這樣猜的呢？可以從棲地、食物、行動結果、生存報告，或 AI 給你的線索來想。</span></div></div></details>
+  </section>
+
+<footer>
+  《誰動了我的棲地!》場測分析 · 資料日期 2026-06-05 · 報告生成 by Claude Code<br>
+  數字可由 <code>node _analyze.js</code> 重現
+</footer>
+
+</div>
+</body>
+</html>
